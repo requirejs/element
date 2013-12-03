@@ -1,0 +1,7 @@
+{
+  "volo": {
+    "dependencies": {
+      "alameda": "github:requirejs/alameda/0.0.9"
+    }
+  }
+}

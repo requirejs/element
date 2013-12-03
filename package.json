@@ -1,0 +1,31 @@
+{
+    "name": "element",
+    "description": "An AMD loader plugin for custom elements",
+    "categories": [
+        "Loader plugins"
+    ],
+    "main": "element.js",
+    "github": "https://github.com/requirejs/element",
+    "bugs": {
+        "web": "https://github.com/requirejs/element/issues"
+    },
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/requirejs/element.git"
+        }
+    ],
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "http://www.opensource.org/licenses/mit-license.php"
+        },
+        {
+            "type": "BSD New",
+            "url": "http://opensource.org/licenses/BSD-3-Clause"
+        }
+    ],
+    "volo": {
+        "url": "https://raw.github.com/requirejs/element/{version}/element.js"
+    }
+}
