@@ -1,0 +1,1 @@
+if (typeof document !== 'undefined' && typeof navigator !== 'undefined') {
