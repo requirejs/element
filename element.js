@@ -1393,6 +1393,14 @@ define(function(require, exports, module) {
     readyQueue = [];
   }
 
+  function makePropName(attrName) {
+    var parts = attrName.split('-');
+    for (var i = 1; i < parts.length; i++) {
+      parts[i] = parts[i].charAt(0).toUpperCase() + parts[i].substring(1);
+    }
+    return parts.join('');
+  }
+
   var element = {
     ready: function (fn) {
       if (element._ready) {
@@ -1431,7 +1439,7 @@ define(function(require, exports, module) {
 
           var proto = Object.create(HTMLElement.prototype);
           Object.keys(mod).forEach(function (key) {
-            proto[key] = mod[key];
+            Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mod, key));
           });
 
           // Wire up auto-injection of the template
@@ -1440,21 +1448,23 @@ define(function(require, exports, module) {
             proto.createdCallback = function () {
               this.innerHTML = '';
 
-              var i, item,
+              var i, item, propName,
                   node = this.template.content.cloneNode(true),
                   attrs = this.attributes;
 
               // Wire attributes to this element's custom/getter setters
-              /*
               for (i = 0; i < attrs.length; i++) {
                 item = attrs.item(i);
                 propName = makePropName(item.nodeName);
 
-                if (this[propName]) {
-
+                // Purposely using this instead of getOwnPropertyDescriptor
+                // since the methos is likely on the object prototype. This
+                // means it could be hazardous to use attribute IDs that
+                // conflict with JS object properties.
+                if (propName in this) {
+                  this[propName] = item.value;
                 }
               }
-              */
 
               dataWires.forEach(function (wire) {
                 slice.call(node.querySelectorAll('[' + wire[0] + ']')).forEach(function (node) {

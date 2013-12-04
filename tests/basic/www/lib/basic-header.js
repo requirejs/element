@@ -4,7 +4,7 @@ define(function(require) {
     return {
         template: require('text!basic-header.html'),
         createdCallback: function () {
-            this.querySelector('i').textContent = 'THIS IS A HEADER: ' + this._suffix;
+            this.querySelector('i').textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
         },
 
         // some-suffix
@@ -14,6 +14,10 @@ define(function(require) {
         },
         get someSuffix() {
             return this._suffix;
+        },
+
+        foobar: function () {
+            return 'foobar';
         }
     };
 });

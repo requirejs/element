@@ -26,3 +26,6 @@ Those are public interface toggles to element. Like a set(options) sort of thing
 
 Map those to someAttr on instance, and do someAttr = 'foo' under covers.
 Does that just work already with polymer shim?
+
+At some point compare work in:
+https://github.com/tmorin/requirejs-plugin-wc
