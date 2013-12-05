@@ -1,8 +1,9 @@
 /*jshint browser: true */
 /*global define */
-define(function(require) {
+define(function(require, exports, module) {
   return {
-    template: require('template!./template.html'),
+    moduleId: module.id,
+    templateId: './template.html',
     createdCallback: function () {
       this.querySelector('i').textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
     },
