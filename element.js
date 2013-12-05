@@ -1369,7 +1369,8 @@ define(function(require, exports, module) {
     readyQueue = [],
     tagRegExp = /<(\w+-\w+)(\s|>)/g,
     commentRegExp = /<!--*.?-->/g,
-    templateDiv = document.createElement('div'),
+    hrefIdRegExp = /\shrefid="([^"]+)"/g,
+    srcIdRegExp = /\ssrcid="([^"]+)"/g,
     slice = Array.prototype.slice;
 
   if (typeof CustomElements !== 'undefined') {
@@ -1401,6 +1402,9 @@ define(function(require, exports, module) {
     return parts.join('');
   }
 
+  /**
+   * Main module export
+   */
   var element = {
     ready: function (fn) {
       if (element._ready) {
@@ -1410,91 +1414,99 @@ define(function(require, exports, module) {
       }
     },
 
-    findTagDeps: function(text) {
-      var match,
-        deps = [];
-      text = text.replace(commentRegExp, '');
+    convertText: function(text, relId) {
+      var match, noCommentText, parts,
+          deps = [];
+
+      if (relId) {
+        // Trim off the last segment of the relId, as we want
+        // the "directory" level of the ID
+        parts = relId.split('/');
+        parts.pop();
+        relId = parts.join('/');
+
+        text = text
+                .replace(hrefIdRegExp, function (match, id) {
+                  if (id.indexOf('.') === 0) {
+                    id = relId + '/' + id;
+                  }
+                  return ' href="' + require.toUrl(id) + '"';
+                })
+                .replace(srcIdRegExp, function (match, id) {
+                  if (id.indexOf('.') === 0) {
+                    id = relId + '/' + id;
+                  }
+                  return ' src="' + require.toUrl(id) + '"';
+                });
+      }
+
+      // Remove comments so only legit tags are found
+      noCommentText = text.replace(commentRegExp, '');
 
       tagRegExp.lastIndex = 0;
-      while ((match = tagRegExp.exec(text))) {
+      while ((match = tagRegExp.exec(noCommentText))) {
         deps.push(module.id + '!' + match[1]);
       }
 
-      return deps;
+      return {
+        deps: deps,
+        text: text
+      };
     },
 
-    load: function (id, require, onload, config) {
+    load: function (id, req, onload, config) {
       if (config.isBuild) {
         // TODO, wire up build inlining
         return;
       }
 
-      require([id], function (mod) {
-        function finish() {
+      req([id], function (mod) {
+        var proto = Object.create(HTMLElement.prototype);
+        Object.keys(mod).forEach(function (key) {
+          Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mod, key));
+        });
 
-          if (typeof mod.template === 'string') {
-            templateDiv.innerHTML = '<template>' + mod.template + '</template>';
-            mod.template = templateDiv.removeChild(templateDiv.firstElementChild);
-          }
+        // Wire up auto-injection of the template
+        if (proto.template) {
+          var oldCallback = proto.createdCallback;
+          proto.createdCallback = function () {
+            this.innerHTML = '';
 
-          var proto = Object.create(HTMLElement.prototype);
-          Object.keys(mod).forEach(function (key) {
-            Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mod, key));
-          });
+            var i, item, propName,
+                node = this.template.content.cloneNode(true),
+                attrs = this.attributes;
 
-          // Wire up auto-injection of the template
-          if (proto.template) {
-            var oldCallback = proto.createdCallback;
-            proto.createdCallback = function () {
-              this.innerHTML = '';
+            // Wire attributes to this element's custom/getter setters
+            for (i = 0; i < attrs.length; i++) {
+              item = attrs.item(i);
+              propName = makePropName(item.nodeName);
 
-              var i, item, propName,
-                  node = this.template.content.cloneNode(true),
-                  attrs = this.attributes;
-
-              // Wire attributes to this element's custom/getter setters
-              for (i = 0; i < attrs.length; i++) {
-                item = attrs.item(i);
-                propName = makePropName(item.nodeName);
-
-                // Purposely using this instead of getOwnPropertyDescriptor
-                // since the methos is likely on the object prototype. This
-                // means it could be hazardous to use attribute IDs that
-                // conflict with JS object properties.
-                if (propName in this) {
-                  this[propName] = item.value;
-                }
+              // Purposely using this instead of getOwnPropertyDescriptor
+              // since the methos is likely on the object prototype. This
+              // means it could be hazardous to use attribute IDs that
+              // conflict with JS object properties.
+              if (propName in this) {
+                this[propName] = item.value;
               }
+            }
 
-              dataWires.forEach(function (wire) {
-                slice.call(node.querySelectorAll('[' + wire[0] + ']')).forEach(function (node) {
-                  wire[1](node, node.getAttribute(wire[0]), this);
-                }.bind(this));
+            dataWires.forEach(function (wire) {
+              slice.call(node.querySelectorAll('[' + wire[0] + ']')).forEach(function (node) {
+                wire[1](node, node.getAttribute(wire[0]), this);
               }.bind(this));
+            }.bind(this));
 
-              this.appendChild(node);
+            this.appendChild(node);
 
-              if (oldCallback) {
-                return oldCallback.apply(this, slice.call(arguments));
-              }
-            };
-          }
-
-          onload(document.register(id, {
-            prototype: proto
-          }));
+            if (oldCallback) {
+              return oldCallback.apply(this, slice.call(arguments));
+            }
+          };
         }
 
-        var deps = [];
-        if (typeof mod.template === 'string') {
-          deps = element.findTagDeps(mod.template);
-        }
-
-        if (deps.length) {
-          require(deps, finish);
-        } else {
-          finish();
-        }
+        onload(document.register(id, {
+          prototype: proto
+        }));
       });
     }
   };
@@ -1512,9 +1524,9 @@ define(function(require, exports, module) {
     onDomDone = true;
 
     // Collect all the tags already in the DOM
-    var deps = element.findTagDeps(document.body.innerHTML);
+    var converted = element.convertText(document.body.innerHTML);
 
-    require(deps, function() {
+    require(converted.deps, function() {
       // TAKEN FROM Polymer CustomElements/src/boot.js
       // parse document
       CustomElements.parser.parse(document);

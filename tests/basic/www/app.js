@@ -7,7 +7,8 @@ requirejs.config({
     baseUrl: 'lib',
     paths: {
         app: '../app',
-        element: '../../../../element'
+        element: '../../../../element',
+        template: '../../../../template'
     }
 });
 
