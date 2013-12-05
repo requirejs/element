@@ -1,18 +1,9 @@
-Initial markup can have tags in it, after that...
 
+To avoid FOUC:
 
-document.register.disabled to disable parsing until ready?
-Maybe a <body parse-suspended> to suspend the body parsing until script says ready?
-
-OR: does <template> not trigger DOM parsing? Maybe just do:
-
-<body>
-    <template>
-        regular body content here in waiting until registration starts
-    </template>
-</body>
-
-For code that wants to delay custom element instantiation?
+<body><template id="body">
+    regular body content here in waiting until registration starts
+</template></body>
 
 Downside, image URLs and such are not fetched until scripts have loaded.
 

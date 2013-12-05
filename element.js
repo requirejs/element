@@ -1388,6 +1388,19 @@ define(function(require, exports, module) {
 
   function onReady() {
     isReady = true;
+
+
+    // The template#body is on purpose. Do not want to get
+    // other element that may be #body if the page decides
+    // to not use the template tag to avoid FOUC.
+    var bodyTemplate = document.querySelector('template#body');
+
+    if (bodyTemplate) {
+console.log('GOT BODY TEMPLATE!');
+      bodyTemplate.parentNode.removeChild(bodyTemplate);
+      document.body.appendChild(bodyTemplate.content);
+    }
+
     readyQueue.forEach(function (fn) {
       fn();
     });
@@ -1407,7 +1420,7 @@ define(function(require, exports, module) {
    */
   var element = {
     ready: function (fn) {
-      if (element._ready) {
+      if (isReady) {
         setTimeout(fn);
       } else {
         readyQueue.push(fn);
