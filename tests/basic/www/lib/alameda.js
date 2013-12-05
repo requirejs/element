@@ -1150,6 +1150,8 @@ var requirejs, require, define;
                     } else if (depName === "module") {
                         //CommonJS module spec 1.1
                         d.values[i] = d.cjsModule = handlers.module(name);
+                    } else if (depName === undefined) {
+                        d.values[i] = undefined;
                     } else {
                         waitForDep(depMap, relName, d, i);
                     }

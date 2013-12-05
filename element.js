@@ -1491,7 +1491,7 @@ define(function(require, exports, module) {
         }
 
         if (deps.length) {
-          require([deps], finish);
+          require(deps, finish);
         } else {
           finish();
         }
