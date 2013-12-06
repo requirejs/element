@@ -7,7 +7,7 @@ define(function(require, exports, module) {
       buildMap = {};
 
   if (typeof XMLHttpRequest !== 'undefined') {
-    // browser
+    // browser loading
     fetchText = function (url, onload, onerror) {
       var xhr = new XMLHttpRequest();
 
@@ -40,6 +40,15 @@ define(function(require, exports, module) {
   }
 
   return {
+    /**
+     * AMD loader plugin API. Loads the resource. Called by an
+     * AMD loader.
+     * @param  {String} id     resource ID to load.
+     * @param  {Function} req    context-specific `require` function.
+     * @param  {Function} onload called when loading is complete.
+     * @param  {Object} config config object, normally just has
+     * config.isBuild to indicate build scenario.
+     */
     load: function (id, req, onload, config) {
       var isBuild = config.isBuild;
 
@@ -57,6 +66,16 @@ define(function(require, exports, module) {
       }, onload.error);
     },
 
+    /**
+     * AMD loader plugin API. Called by a build tool, to give
+     * this plugin the opportunity to write a resource to
+     * a build file.
+     * @param  {String} pluginName ID of this module, according
+     * to what the loader thinks the ID is.
+     * @param  {String} id         resource ID handled by plugin.
+     * @param  {Function} write      Used to write output to build file.
+     * @param  {Object} config     config from loader.
+     */
     write: function (pluginName, id, write, config) {
       if (buildMap.hasOwnProperty(id)) {
         var obj = buildMap[id];

@@ -32,11 +32,7 @@ restriction: if js module does a createElement for custom tag, needs to list it 
 
 TODO:
 
-* fix alameda undefined bug
-* shrink template.js
-* Comment the code template
 * work with requirejs?
-* works in chrome?
 * two way data binding?
 
 ---
