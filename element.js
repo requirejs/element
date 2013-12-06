@@ -1351,7 +1351,7 @@ CustomElements.parser = parser;
 })();
 }
 /*jshint browser: true */
-/*globals define, CustomElements, Platform */
+/*globals define, requirejs, CustomElements, Platform */
 
 /*
 Notes:
@@ -1364,13 +1364,14 @@ Notes:
 
 */
 define(function(require, exports, module) {
-  var parser, dataWires, templateDiv,
+  var parser, templateDiv,
       isReady = false,
       readyQueue = [],
       tagRegExp = /<(\w+-\w+)(\s|>)/g,
       commentRegExp = /<!--*.?-->/g,
       hrefIdRegExp = /\shrefid="([^"]+)"/g,
       srcIdRegExp = /\ssrcid="([^"]+)"/g,
+      buildProtocol = 'build:',
       slice = Array.prototype.slice;
 
   if (typeof CustomElements !== 'undefined') {
@@ -1378,37 +1379,11 @@ define(function(require, exports, module) {
     templateDiv = document.createElement('div');
   }
 
-  dataWires = [
-    ['data-attr', function (node, value, instance) {
-      instance[value] = node;
-    }],
-    ['data-event', function (node, value, instance) {
-      // Value is of type 'name:value,name:value',
-      // with the :value part optional.
-      value.split(',').forEach(function (pair) {
-        var evtName, method,
-            parts = pair.split(':');
-
-        if (!parts[1]) {
-          parts[1] = parts[0];
-        }
-        evtName = parts[0].trim();
-        method = parts[1].trim();
-
-        if (typeof instance[method] !== 'function') {
-          throw new Error('"' + method + '" is not a function, cannot bind with data-event');
-        }
-
-        node.addEventListener(evtName, function(evt) {
-          // Treat these events as private to the
-          // custom element.
-          evt.stopPropagation();
-          return instance[method](evt);
-        }, false);
-      });
-    }]
-  ];
-
+  /**
+   * Handles converting <template id="body"> template
+   * into a real body content, and calling back
+   * element.ready listeners.
+   */
   function onReady() {
     isReady = true;
 
@@ -1428,6 +1403,16 @@ define(function(require, exports, module) {
     readyQueue = [];
   }
 
+  /**
+   * For hrefid and srcid resolution, need full IDs.
+   * This method takes care of creating full IDs. It
+   * could be improved by removing extraneous ./ and
+   * ../ references.
+   * @param  {String} id    possible local, relative ID
+   * @param  {String} relId ID to use as a basis for the
+   * the local ID.
+   * @return {String} full ID
+   */
   function makeFullId(id, relId) {
     if (id.indexOf('.') === 0 && relId) {
       // Trim off the last segment of the relId, as we want
@@ -1442,6 +1427,11 @@ define(function(require, exports, module) {
     return id;
   }
 
+  /**
+   * Converts an attribute like a-long-attr to aLongAttr
+   * @param  {String} attrName The attribute name
+   * @return {String}
+   */
   function makePropName(attrName) {
     var parts = attrName.split('-');
     for (var i = 1; i < parts.length; i++) {
@@ -1450,6 +1440,14 @@ define(function(require, exports, module) {
     return parts.join('');
   }
 
+  /**
+   * Called once a template's dependencies have been loaded, and the
+   * current element can be considered fully loaded.
+   * @param  {String} id     module ID.
+   * @param  {Object} mod    The module export for the custom element.
+   * @param  {Function} onload function given by AMD load to call once
+   * the custome element is loaded.
+   */
   function finishLoad(id, mod, onload) {
     var proto = Object.create(HTMLElement.prototype);
     Object.keys(mod).forEach(function (key) {
@@ -1480,7 +1478,7 @@ define(function(require, exports, module) {
           }
         }
 
-        dataWires.forEach(function (wire) {
+        element.dataWires.forEach(function (wire) {
           slice.call(node.querySelectorAll('[' + wire[0] + ']')).forEach(function (node) {
             wire[1](node, node.getAttribute(wire[0]), this);
           }.bind(this));
@@ -1499,6 +1497,19 @@ define(function(require, exports, module) {
     }));
   }
 
+  /**
+   * Responsible for loading any dependencies from a custom
+   * element's template object. Uses the element's module
+   * export's template.deps as the list of IDs. So, this
+   * should only be called once template normalization has
+   * happened.
+   * @param  {String} id     module ID.
+   * @param  {Object} mod    module export.
+   * @param  {Function} req    context-specific `require`
+   * function, comes from the AMD loader.
+   * @param  {Function} onload function to call once
+   * loading is complete, comes from the AMD loader.
+   */
   function loadDeps(id, mod, req, onload) {
     if (mod.template && mod.template.deps) {
       req(mod.template.deps, function () {
@@ -1510,9 +1521,15 @@ define(function(require, exports, module) {
   }
 
   /**
-   * Main module export
+   * Main module export. These methods are visible to
+   * any module.
    */
   var element = {
+    /**
+     * Register a function to be run once element dependency
+     * tracing and registration has finished.
+     * @param  {Function} fn
+     */
     ready: function (fn) {
       if (isReady) {
         setTimeout(fn);
@@ -1521,18 +1538,77 @@ define(function(require, exports, module) {
       }
     },
 
-    dataWires: dataWires,
+    /**
+     * data- attributes to scan for in each instantiated element,
+     * done in the createdCallback step, before the element-specific
+     * createdCallback is run. Extensible, but this effectively is
+     * like a global. Better bet is to implement mixins for elements
+     * to use as dependencies. These may be moved to mixins once
+     * proving out the general loader plugin support.
+     * @type {Array}
+     */
+    dataWires: [
+      ['data-attr', function (node, value, instance) {
+        instance[value] = node;
+      }],
+      ['data-event', function (node, value, instance) {
+        // Value is of type 'name:value,name:value',
+        // with the :value part optional.
+        value.split(',').forEach(function (pair) {
+          var evtName, method,
+              parts = pair.split(':');
 
+          if (!parts[1]) {
+            parts[1] = parts[0];
+          }
+          evtName = parts[0].trim();
+          method = parts[1].trim();
+
+          if (typeof instance[method] !== 'function') {
+            throw new Error('"' + method + '" is not a function, cannot bind with data-event');
+          }
+
+          node.addEventListener(evtName, function(evt) {
+            // Treat these events as private to the
+            // custom element.
+            evt.stopPropagation();
+            return instance[method](evt);
+          }, false);
+        });
+      }]
+    ],
+
+    /**
+     * Makes a <template> element from a string of HTML.
+     * @param  {String} text
+     * @return {HTMLTemplateElement}
+     */
     makeTemplateNode: function (text) {
       templateDiv.innerHTML = '<template>' + text + '</template>';
        return templateDiv.removeChild(templateDiv.firstElementChild);
     },
 
+    /**
+     * Makes a template function for use as the template object
+     * used in a fully realized custom element.
+     * @param  {String} text string of HTML
+     * @return {Function} by calling this function, creates a
+     * clone of the DocumentFragment from template.
+     */
     makeTemplateFn: function (text) {
       var templateNode = element.makeTemplateNode(text);
       return function() { return templateNode.content.cloneNode(true); };
     },
 
+    /**
+     * Replaces hrefid and srcid with href and src, using
+     * require.toUrl(id) to convert the IDs to paths.
+     * @param  {String} text  string of HTML
+     * @param  {String} relId the reference module ID to use,
+     * which is normallly the module ID associated with the
+     * HTML string given as input.
+     * @return {String} converted HTML string.
+     */
     idsToUrls: function(text, relId) {
       text = text
               .replace(hrefIdRegExp, function (match, id) {
@@ -1546,6 +1622,15 @@ define(function(require, exports, module) {
       return text;
     },
 
+    /**
+     * Gives and array of 'element!'-based module IDs for
+     * any custom elements found in the string of HTML.
+     * So if the HTML has <some-thing> in it, the returned
+     * dependency array will have 'element!some-thing' in it.
+     * @param  {String} text string of HTML
+     * @return {Array} array of dependencies. Could be zero
+     * length if no dependencies found.
+     */
     depsFromText: function (text) {
       var match, noCommentText,
           deps = [];
@@ -1561,6 +1646,15 @@ define(function(require, exports, module) {
       return deps;
     },
 
+    /**
+     * Converts a string of HTML into a full template
+     * object that is used for a custom element's
+     * prototype `template` property.
+     * @param  {String} text string of HTML
+     * @param  {String} id   module ID for the custom
+     * element associated with this template.
+     * @return {Object} template object.
+     */
     textToTemplate: function(text, id) {
       var obj,
           deps = element.depsFromText(text);
@@ -1581,36 +1675,73 @@ define(function(require, exports, module) {
       return obj;
     },
 
+    /**
+     * The AMD loader plugin API. Called by an AMD loader
+     * to handle 'element!' resources.
+     * @param  {String} id     module ID to load.
+     * @param  {Function} req  context-specific `require` function.
+     * @param  {Function} onload function to call once loading is complete.
+     * @param  {Object} config config from the loader. Normally just has
+     * config.isBuild if in a build scenario.
+     */
     load: function (id, req, onload, config) {
-      req([id], function (mod) {
-        // For builds do nothing, since need
-        // runtime moduleId of the module to
-        // do any final work. Rely on template
-        // plugin to do any inlining.
-        if (config.isBuild) {
-          return onload(mod);
-        }
+      // If a build directive, load those files and scan
+      // for dependencies, loading them all.
+      if (id.indexOf(buildProtocol) === 0 && config.isBuild) {
+        id = id.substring(buildProtocol.length);
 
-        var template = mod.template;
-        if (template) {
-          if (!mod.moduleId) {
-            return onload.error(new Error(id + ': specified templateId but missing moduleId'));
+        var idList = id.split(','),
+            count = 0,
+            buildIdDone = function () {
+              count += 1;
+              if (count === idList.length) {
+                onload();
+              }
+            };
+
+        // Set buildIdDone as executable by the build
+        buildIdDone.__requireJsBuild = true;
+
+        // Allow for multiple files separated by commas
+        id.split(',').forEach(function (moduleId) {
+          var path = req.toUrl(moduleId);
+
+          // Leverage r.js optimizer special method for reading
+          // files synchronously.
+          require(element.depsFromText(requirejs._readFile(path)), buildIdDone);
+        });
+      } else {
+        // Normal dependency request.
+        req([id], function (mod) {
+          // For builds do nothing, since need
+          // runtime moduleId of the module to
+          // do any final work. Rely on template
+          // plugin to do any inlining.
+          if (config.isBuild) {
+            return onload(mod);
           }
 
-          if (typeof template === 'string') {
-            mod.template = element.textToTemplate(template, mod.moduleId);
-          } else if (mod.translateIds) {
-            // An inlined template object. Finish out
-            // work that can only be done at runtime.
-            var fullTemplateId = makeFullId(mod.templateId, mod.moduleId);
-            template.text = element.idsToUrls(template.text, fullTemplateId);
-            if (!template.fn) {
-              template.fn = element.makeTemplateFn(template.text);
+          var template = mod.template;
+          if (template) {
+            if (!mod.moduleId) {
+              return onload.error(new Error(id + ': specified templateId but missing moduleId'));
+            }
+
+            if (typeof template === 'string') {
+              mod.template = element.textToTemplate(template, mod.moduleId);
+            } else if (mod.translateIds) {
+              // An inlined template object. Finish out
+              // work that can only be done at runtime.
+              var fullTemplateId = makeFullId(mod.templateId, mod.moduleId);
+              template.text = element.idsToUrls(template.text, fullTemplateId);
+              if (!template.fn) {
+                template.fn = element.makeTemplateFn(template.text);
+              }
             }
           }
-        }
-        loadDeps(id, mod, req, onload);
-      });
+          loadDeps(id, mod, req, onload);
+        });
+      }
     }
   };
 
@@ -1631,7 +1762,7 @@ define(function(require, exports, module) {
       var converted = element.textToTemplate(document.body.innerHTML);
 
       require(converted.deps, function() {
-        // TAKEN FROM Polymer CustomElements/src/boot.js
+        // START TAKEN FROM Polymer CustomElements/src/boot.js
         // parse document
         CustomElements.parser.parse(document);
         // one more pass before register is 'live'
@@ -1653,6 +1784,7 @@ define(function(require, exports, module) {
           //document.body.dispatchEvent(
           //  new CustomEvent('WebComponentsReady', {bubbles: true})
           //);
+        // END TAKEN FROM Polymer CustomElements/src/boot.js
 
           onReady();
         });
@@ -1665,7 +1797,7 @@ define(function(require, exports, module) {
         window.addEventListener('DOMContentLoaded', onDom);
 
         // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
-        // elements. So, going old school
+        // elements. So, going old school.
         var pollId = setInterval(function () {
           if (document.readyState === 'complete') {
             clearInterval(pollId);

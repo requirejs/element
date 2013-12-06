@@ -33,10 +33,24 @@ restriction: if js module does a createElement for custom tag, needs to list it 
 TODO:
 
 * build step: a way for element to parse the index.html for the build.
-* two way data binding?
+* Comment the code
 * work with requirejs?
+* works in chrome?
+* two way data binding?
 
 ---
 
 What are the lifecycle steps they can implement?
 
+----
+elements do not name themselves
+
+---
+hrefid srcid
+---
+
+mixins for two way data binding, other things.
+
+--
+modern browsers only, alameda only. template support.
+--
