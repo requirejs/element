@@ -1,34 +1,12 @@
 /*jshint browser: true */
-/*globals define, process, Components, FileUtils */
+/*globals define, requirejs */
 
 define(function(require, exports, module) {
-  var fetchText, fs, Cc, Ci,
-      xpcIsWindows,
+  var fetchText,
       element = require('element'),
-      masterConfig = (module.config && module.config()) || {},
       buildMap = {};
 
-  if (masterConfig.env === 'node' || (!masterConfig.env &&
-      typeof process !== "undefined" &&
-      process.versions &&
-      !!process.versions.node)) {
-    //Using special require.nodeRequire, something added by r.js.
-    fs = requirejs.nodeRequire('fs');
-
-    fetchText = function (url, onload, onerror) {
-      try {
-        var file = fs.readFileSync(url, 'utf8');
-        // Remove BOM (Byte Mark Order) from utf8 files if it is there.
-        if (file.indexOf('\uFEFF') === 0) {
-          file = file.substring(1);
-        }
-        onload(file);
-      } catch (e) {
-        onerror(e);
-      }
-    };
-  } else if (masterConfig.env === 'xhr' || (!masterConfig.env &&
-      typeof XMLHttpRequest !== 'undefined')) {
+  if (typeof XMLHttpRequest !== 'undefined') {
     // browser
     fetchText = function (url, onload, onerror) {
       var xhr = new XMLHttpRequest();
@@ -52,43 +30,12 @@ define(function(require, exports, module) {
       xhr.responseType = 'text';
       xhr.send(null);
     };
-  } else if (masterConfig.env === 'xpconnect' || (!masterConfig.env &&
-      typeof Components !== 'undefined' && Components.classes &&
-      Components.interfaces)) {
-    // Avert your gaze!
-    Cc = Components.classes;
-    Ci = Components.interfaces;
-    Components.utils['import']('resource://gre/modules/FileUtils.jsm');
-    xpcIsWindows = ('@mozilla.org/windows-registry-key;1' in Cc);
-
-    fetchText = function (url, onload, onerror) {
-      var inStream, convertStream, fileObj,
-        readData = {};
-
-      if (xpcIsWindows) {
-        url = url.replace(/\//g, '\\');
-      }
-
-      fileObj = new FileUtils.File(url);
-
-      //XPCOM, you so crazy
-      try {
-        inStream = Cc['@mozilla.org/network/file-input-stream;1']
-               .createInstance(Ci.nsIFileInputStream);
-        inStream.init(fileObj, 1, 0, false);
-
-        convertStream = Cc['@mozilla.org/intl/converter-input-stream;1']
-                .createInstance(Ci.nsIConverterInputStream);
-        convertStream.init(inStream, "utf-8", inStream.available(),
-        Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
-
-        convertStream.readString(inStream.available(), readData);
-        convertStream.close();
-        inStream.close();
-        onload(readData.value);
-      } catch (e) {
-        onerror(new Error((fileObj && fileObj.path || '') + ': ' + e));
-      }
+  } else {
+    // Likely a build scenario. Cheat a bit and use
+    // an r.js helper. This could be modified to support
+    // more AMD loader tools though in the future.
+    fetchText = function (url, onload) {
+      onload(requirejs._readFile(url));
     };
   }
 
@@ -97,13 +44,16 @@ define(function(require, exports, module) {
       var isBuild = config.isBuild;
 
       fetchText(req.toUrl(id), function (text) {
-        var templateObj = element.textToTemplate(text, (isBuild ? null : id));
+        var templateObj = element.textToTemplate(text, id, isBuild);
 
         if (isBuild) {
           buildMap[id] = templateObj;
+          // Trigger loading of any deps found in the template,
+          // since otherwise they will not be seen by the build.
+          req(templateObj.deps, onload);
+        } else {
+          onload(templateObj);
         }
-
-        onload(templateObj);
       }, onload.error);
     },
 
@@ -113,10 +63,7 @@ define(function(require, exports, module) {
 
         write.asModule(pluginName + '!' + id,
           "define(" + JSON.stringify(obj.deps) + ", function () { return " +
-          JSON.stringify({
-            translateIds: true,
-            text: buildMap[id].text
-          }) +
+          JSON.stringify(buildMap[id]) +
           "; });\n");
       }
     }

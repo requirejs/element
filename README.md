@@ -32,8 +32,9 @@ restriction: if js module does a createElement for custom tag, needs to list it 
 
 TODO:
 
-* build step: a way for element to parse the index.html for the build.
-* Comment the code
+* fix alameda undefined bug
+* shrink template.js
+* Comment the code template
 * work with requirejs?
 * works in chrome?
 * two way data binding?

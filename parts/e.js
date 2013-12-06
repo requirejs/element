@@ -299,27 +299,35 @@ define(function(require, exports, module) {
      * object that is used for a custom element's
      * prototype `template` property.
      * @param  {String} text string of HTML
-     * @param  {String} id   module ID for the custom
+     * @param  {String} id module ID for the custom
      * element associated with this template.
+     * @param  {Boolean} skipTranslateIds for build
+     * concerns, want to avoid the work that translate
+     * IDs until runtime, when more state is known
+     * about final path information. If that is the
+     * case, then pass true for this value.
      * @return {Object} template object.
      */
-    textToTemplate: function(text, id) {
+    textToTemplate: function(text, id, skipTranslateIds) {
       var obj,
           deps = element.depsFromText(text);
 
-      if (id) {
-        text = element.idsToUrls(text, id);
-      }
-
       obj = {
         id: id,
-        deps: deps,
-        text: text
+        deps: deps
       };
 
-      if (id) {
-        obj.fn = element.makeTemplateFn(text);
+      if (skipTranslateIds) {
+        obj.translateIds = true;
+        obj.text = text;
+      } else {
+        obj.text = element.idsToUrls(text, id);
+        // Cannot reliably create the template function
+        // until IDs are translated, so wait on that
+        // step until later.
+        obj.fn = element.makeTemplateFn(obj.text);
       }
+
       return obj;
     },
 
@@ -361,12 +369,11 @@ define(function(require, exports, module) {
       } else {
         // Normal dependency request.
         req([id], function (mod) {
-          // For builds do nothing, since need
-          // runtime moduleId of the module to
-          // do any final work. Rely on template
-          // plugin to do any inlining.
+          // For builds do nothing, since need runtime moduleId of the
+          // module to do any final work. Rely on template plugin to do
+          // any inlining.
           if (config.isBuild) {
-            return onload(mod);
+            return onload();
           }
 
           var template = mod.template;
@@ -377,14 +384,15 @@ define(function(require, exports, module) {
 
             if (typeof template === 'string') {
               mod.template = element.textToTemplate(template, mod.moduleId);
-            } else if (mod.translateIds) {
+            } else if (template.translateIds) {
               // An inlined template object. Finish out
               // work that can only be done at runtime.
-              var fullTemplateId = makeFullId(mod.templateId, mod.moduleId);
+              var fullTemplateId = makeFullId(template.id, mod.moduleId);
               template.text = element.idsToUrls(template.text, fullTemplateId);
               if (!template.fn) {
                 template.fn = element.makeTemplateFn(template.text);
               }
+              template.translateIds = false;
             }
           }
           loadDeps(id, mod, req, onload);
