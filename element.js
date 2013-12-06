@@ -1364,18 +1364,18 @@ Notes:
 
 */
 define(function(require, exports, module) {
-  var parser, dataWires,
-    isReady = false,
-    readyQueue = [],
-    tagRegExp = /<(\w+-\w+)(\s|>)/g,
-    commentRegExp = /<!--*.?-->/g,
-    hrefIdRegExp = /\shrefid="([^"]+)"/g,
-    srcIdRegExp = /\ssrcid="([^"]+)"/g,
-    templateDiv = document.createElement('div'),
-    slice = Array.prototype.slice;
+  var parser, dataWires, templateDiv,
+      isReady = false,
+      readyQueue = [],
+      tagRegExp = /<(\w+-\w+)(\s|>)/g,
+      commentRegExp = /<!--*.?-->/g,
+      hrefIdRegExp = /\shrefid="([^"]+)"/g,
+      srcIdRegExp = /\ssrcid="([^"]+)"/g,
+      slice = Array.prototype.slice;
 
   if (typeof CustomElements !== 'undefined') {
     parser = CustomElements.parser;
+    templateDiv = document.createElement('div');
   }
 
   dataWires = [
@@ -1383,13 +1383,34 @@ define(function(require, exports, module) {
       instance[value] = node;
     }],
     ['data-event', function (node, value, instance) {
-      node.addEventListener(value, instance[value].bind(instance), false);
+      // Value is of type 'name:value,name:value',
+      // with the :value part optional.
+      value.split(',').forEach(function (pair) {
+        var evtName, method,
+            parts = pair.split(':');
+
+        if (!parts[1]) {
+          parts[1] = parts[0];
+        }
+        evtName = parts[0].trim();
+        method = parts[1].trim();
+
+        if (typeof instance[method] !== 'function') {
+          throw new Error('"' + method + '" is not a function, cannot bind with data-event');
+        }
+
+        node.addEventListener(evtName, function(evt) {
+          // Treat these events as private to the
+          // custom element.
+          evt.stopPropagation();
+          return instance[method](evt);
+        }, false);
+      });
     }]
   ];
 
   function onReady() {
     isReady = true;
-
 
     // The template#body is on purpose. Do not want to get
     // other element that may be #body if the page decides
@@ -1417,7 +1438,7 @@ define(function(require, exports, module) {
 
       id = (relId ? relId + '/' : '') + id;
     }
-console.log('MAKE FULL ID FROM [' + id + '], [' + relId + '] = ' + id);
+
     return id;
   }
 
@@ -1428,30 +1449,6 @@ console.log('MAKE FULL ID FROM [' + id + '], [' + relId + '] = ' + id);
     }
     return parts.join('');
   }
-
-  function fetchText(url, onload, onerror) {
-    var xhr = new XMLHttpRequest();
-
-    xhr.open('GET', url, true);
-    xhr.onreadystatechange = function() {
-      var status, err;
-
-      if (xhr.readyState === 4) {
-        status = xhr.status;
-        if (status > 399 && status < 600) {
-          //An http 4xx or 5xx error. Signal an error.
-          err = new Error(url + ' HTTP status: ' + status);
-          err.xhr = xhr;
-          onerror(err);
-        } else {
-          onload(xhr.responseText);
-        }
-      }
-    };
-    xhr.responseType = 'text';
-    xhr.send(null);
-  }
-
 
   function finishLoad(id, mod, onload) {
     var proto = Object.create(HTMLElement.prototype);
@@ -1464,7 +1461,7 @@ console.log('MAKE FULL ID FROM [' + id + '], [' + relId + '] = ' + id);
       var oldCallback = proto.createdCallback;
       proto.createdCallback = function () {
         this.innerHTML = '';
-//xxx make sure template is created correctly
+
         var i, item, propName,
             node = this.template.fn(),
             attrs = this.attributes;
@@ -1524,9 +1521,16 @@ console.log('MAKE FULL ID FROM [' + id + '], [' + relId + '] = ' + id);
       }
     },
 
+    dataWires: dataWires,
+
     makeTemplateNode: function (text) {
       templateDiv.innerHTML = '<template>' + text + '</template>';
        return templateDiv.removeChild(templateDiv.firstElementChild);
+    },
+
+    makeTemplateFn: function (text) {
+      var templateNode = element.makeTemplateNode(text);
+      return function() { return templateNode.content.cloneNode(true); };
     },
 
     idsToUrls: function(text, relId) {
@@ -1557,111 +1561,118 @@ console.log('MAKE FULL ID FROM [' + id + '], [' + relId + '] = ' + id);
       return deps;
     },
 
-    idToTemplate: function(id, onload, onerror) {
-      fetchText(require.toUrl(id), function (text) {
-        onload(element.textToTemplate(text, id));
-      }, onerror);
-    },
-
     textToTemplate: function(text, id) {
-      var convertedText = element.idsToUrls(text, id),
-          template = element.makeTemplateNode(convertedText);
+      var obj,
+          deps = element.depsFromText(text);
 
-      return {
+      if (id) {
+        text = element.idsToUrls(text, id);
+      }
+
+      obj = {
         id: id,
-        deps: element.depsFromText(text),
-        text: convertedText,
-        fn: function() {
-          return template.content.cloneNode(true);
-        }
+        deps: deps,
+        text: text
       };
+
+      if (id) {
+        obj.fn = element.makeTemplateFn(text);
+      }
+      return obj;
     },
 
     load: function (id, req, onload, config) {
-      if (config.isBuild) {
-        // TODO, wire up build inlining
-        return;
-      }
-
       req([id], function (mod) {
-        if (mod.templateId) {
-          if (!mod.moduleId) {
-            return onload.error(new Error(id + ': specified templateId but missing moduleId'));
-          }
-          var fullTemplateId = makeFullId(mod.templateId, mod.moduleId);
-          return element.idToTemplate(fullTemplateId, function(templateObj) {
-            mod.template = templateObj;
-            loadDeps(id, mod, req, onload);
-          }, onload.error);
-        } else if (typeof mod.template === 'string') {
-          if (!mod.moduleId) {
-            return onload.error(new Error(id + ': specified templateId but missing moduleId'));
-          }
-          mod.template = element.textToTemplate(mod.template, mod.moduleId);
+        // For builds do nothing, since need
+        // runtime moduleId of the module to
+        // do any final work. Rely on template
+        // plugin to do any inlining.
+        if (config.isBuild) {
+          return onload(mod);
         }
 
+        var template = mod.template;
+        if (template) {
+          if (!mod.moduleId) {
+            return onload.error(new Error(id + ': specified templateId but missing moduleId'));
+          }
+
+          if (typeof template === 'string') {
+            mod.template = element.textToTemplate(template, mod.moduleId);
+          } else if (mod.translateIds) {
+            // An inlined template object. Finish out
+            // work that can only be done at runtime.
+            var fullTemplateId = makeFullId(mod.templateId, mod.moduleId);
+            template.text = element.idsToUrls(template.text, fullTemplateId);
+            if (!template.fn) {
+              template.fn = element.makeTemplateFn(template.text);
+            }
+          }
+        }
         loadDeps(id, mod, req, onload);
       });
     }
   };
 
-  // This section wires up processing of the initial document DOM.
-  // In a real document.register browser, this would not be possible
-  // to do, as document.register would grab all the tags before this
-  // would likely run. Need a document.register.disabled capability?
-  // also, onDomDone just a hack related to DOMContentLoaded not firing.
-  var onDomDone = false;
-  function onDom() {
-    if (onDomDone) {
-      return;
-    }
-    onDomDone = true;
-
-    // Collect all the tags already in the DOM
-    var converted = element.textToTemplate(document.body.innerHTML);
-
-    require(converted.deps, function() {
-      // TAKEN FROM Polymer CustomElements/src/boot.js
-      // parse document
-      CustomElements.parser.parse(document);
-      // one more pass before register is 'live'
-      CustomElements.upgradeDocument(document);
-      // choose async
-      var async = window.Platform && Platform.endOfMicrotask ?
-      Platform.endOfMicrotask :
-      setTimeout;
-      async(function() {
-        // set internal 'ready' flag, now document.register will trigger
-        // synchronous upgrades
-        CustomElements.ready = true;
-        // capture blunt profiling data
-        CustomElements.readyTime = Date.now();
-        //if (window.HTMLImports) {
-        //  CustomElements.elapsed = CustomElements.readyTime - HTMLImports.readyTime;
-        //}
-        // notify the system that we are bootstrapped
-        //document.body.dispatchEvent(
-        //  new CustomEvent('WebComponentsReady', {bubbles: true})
-        //);
-
-        onReady();
-      });
-    });
-  }
   if (typeof CustomElements !== 'undefined') {
-    if (document.readyState === 'complete') {
-      onDom();
-    } else {
-      window.addEventListener('DOMContentLoaded', onDom);
+    // This section wires up processing of the initial document DOM.
+    // In a real document.register browser, this would not be possible
+    // to do, as document.register would grab all the tags before this
+    // would likely run. Need a document.register.disabled capability?
+    // also, onDomDone just a hack related to DOMContentLoaded not firing.
+    var onDom, onDomDone = false;
+    onDom = function () {
+      if (onDomDone) {
+        return;
+      }
+      onDomDone = true;
 
-      // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
-      // elements. So, going old school
-      var pollId = setInterval(function () {
-        if (document.readyState === 'complete') {
-          clearInterval(pollId);
-          onDom();
-        }
-      }, 10);
+      // Collect all the tags already in the DOM
+      var converted = element.textToTemplate(document.body.innerHTML);
+
+      require(converted.deps, function() {
+        // TAKEN FROM Polymer CustomElements/src/boot.js
+        // parse document
+        CustomElements.parser.parse(document);
+        // one more pass before register is 'live'
+        CustomElements.upgradeDocument(document);
+        // choose async
+        var async = window.Platform && Platform.endOfMicrotask ?
+        Platform.endOfMicrotask :
+        setTimeout;
+        async(function() {
+          // set internal 'ready' flag, now document.register will trigger
+          // synchronous upgrades
+          CustomElements.ready = true;
+          // capture blunt profiling data
+          CustomElements.readyTime = Date.now();
+          //if (window.HTMLImports) {
+          //  CustomElements.elapsed = CustomElements.readyTime - HTMLImports.readyTime;
+          //}
+          // notify the system that we are bootstrapped
+          //document.body.dispatchEvent(
+          //  new CustomEvent('WebComponentsReady', {bubbles: true})
+          //);
+
+          onReady();
+        });
+      });
+    };
+    if (typeof CustomElements !== 'undefined') {
+      if (document.readyState === 'complete') {
+        onDom();
+      } else {
+        window.addEventListener('DOMContentLoaded', onDom);
+
+        // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
+        // elements. So, going old school
+        var pollId = setInterval(function () {
+          if (document.readyState === 'complete') {
+            clearInterval(pollId);
+            onDom();
+          }
+        }, 10);
+      }
     }
   }
 

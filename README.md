@@ -32,10 +32,10 @@ restriction: if js module does a createElement for custom tag, needs to list it 
 
 TODO:
 
-* data-prop
-* data-event
-* build step
+* build step: a way for element to parse the index.html for the build.
 * two way data binding?
+* work with requirejs?
+
 ---
 
 What are the lifecycle steps they can implement?

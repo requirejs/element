@@ -3,9 +3,15 @@
 define(function(require, exports, module) {
   return {
     moduleId: module.id,
-    templateId: './template.html',
+    template: require('template!./template.html'),
+    //template: '',
+    /*
+    template: {
+      deps: element.
+    }
+     */
     createdCallback: function () {
-      this.querySelector('i').textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
+      this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
     },
 
     // some-suffix
@@ -19,6 +25,17 @@ define(function(require, exports, module) {
 
     foobar: function () {
       return 'foobar';
+    },
+
+    click: function (evt) {
+      console.log('a click: ', evt.target);
+    },
+    mouseover: function (evt) {
+      console.log('a mouseover: ' + evt.target);
+    },
+    onSomethingClick: function (evt) {
+      evt.preventDefault();
+      console.log('something click: ' + evt.target);
     }
   };
 });
