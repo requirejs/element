@@ -4,12 +4,7 @@ define(function(require, exports, module) {
   return {
     moduleId: module.id,
     template: require('template!./template.html'),
-    //template: '',
-    /*
-    template: {
-      deps: element.
-    }
-     */
+
     createdCallback: function () {
       this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
     },

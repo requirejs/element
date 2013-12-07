@@ -2,14 +2,8 @@
 /*globals define, requirejs, CustomElements, Platform */
 
 /*
-Notes:
-
-* CustomElement code from polymer-v0.0.20131107
-
-* Warning: has sucky cycle support between custom element names. But cycles
-  custom elements would be crazy talk right? Right? If not, would be good
-  to get that use case.
-
+CustomElement code near the bottom of this file is
+from polymer-v0.0.20131107
 */
 define(function(require, exports, module) {
   var parser, templateDiv,
