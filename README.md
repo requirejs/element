@@ -34,6 +34,8 @@ Right now the examples showing **custom elements name themselves**. This is not 
 
 **Current examples/base elments of web components are JavaScript-heavy**, with just a bit of HTML around them. Modules are great with JavaScript. AMD-based projects have established usage patterns that use loader plugins to load HTML snippets for HTML templating systems. That can be used for custom elements too. If the HTML snippet is small enough, it can just be inlined in the module, and [quasi-literals](http://wiki.ecmascript.org/doku.php?id=harmony:quasis) for ES6 open up other possibilities.
 
+**Clear optimization strategies** are available with the loader plugin. The template and HTML, along with already-parsed dependencies can be inlined in a build step. Try it by going to the `tests/basic` directory, run `node tools/r.js -o tools/build.js`, and inspect the `www-built/app.js` file. There may be optimization strategies in the pipeline for HTML Imports, but with the modular approach, hopefully HTML Imports would not be needed.
+
 ## Comparison with Polymer and X-Tags
 
 Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/) provide extras on top of the base capabilities being specified. While those things may be nice, and some are to feel out what might need to be standardized later, it gets hard to figure out what is custom and what is not, or to only take the custom parts that an app may use.
