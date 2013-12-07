@@ -1542,7 +1542,7 @@ define(function(require, exports, module) {
      * @type {Array}
      */
     dataWires: [
-      ['data-attr', function (node, value, instance) {
+      ['data-prop', function (node, value, instance) {
         instance[value] = node;
       }],
       ['data-event', function (node, value, instance) {
