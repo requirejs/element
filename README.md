@@ -36,6 +36,12 @@ Right now the examples showing **custom elements name themselves**. This is not 
 
 **Clear optimization strategies** are available with the loader plugin. The template and HTML, along with already-parsed dependencies can be inlined in a build step. Try it by going to the `tests/basic` directory, run `node tools/r.js -o tools/build.js`, and inspect the `www-built/app.js` file. There may be optimization strategies in the pipeline for HTML Imports, but with the modular approach, hopefully HTML Imports would not be needed.
 
+Maybe not all HTML cases in the future will be able to use modules, and that some of the decisions in the web component stack, like the ones around HTML Imports, are there for those cases. I wanted to show how a modular approach can streamline some decisions and allow custom elements to be reusable in more ways, in particular by package managers. This fits well with the encapsulation goals of custom elements.
+
+I also want to be sure that decisions for the web component stack do not harm modular use.
+
+Related, but separately: I am very wary of anyone advocating HTML Imports for loading scripts. There is the script tag for path-based script loading, and the ES Module Loader API for anything else (or an AMD module loader in the meantime).
+
 ## Comparison with Polymer and X-Tags
 
 Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/) provide extras on top of the base capabilities being specified. While those things may be nice, and some are to feel out what might need to be standardized later, it gets hard to figure out what is custom and what is not, or to only take the custom parts that an app may use.
@@ -65,7 +71,7 @@ For example, for this use of a custom element:
 <custom-tag some-attr="foo">
 ```
 
-The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/369c736d597f98d826ee79e9aef5487525ce9169/tests/basic/www/lib/basic-header/main.js#L17). [Usage here](https://github.com/jrburke/element/blob/369c736d597f98d826ee79e9aef5487525ce9169/tests/basic/www/index.html#L7).
+The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/lib/basic-header/main.js#L18). [Usage here](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/index.html#L7).
 
 ## Avoiding FOUC
 
@@ -81,7 +87,7 @@ Then the plugin will convert that template to the real body content once it know
 
 This may mean that any resources for the body, like images, may not start downloading until custom element initialization is done. I think this works out though, because those module elements may also affect layout, so best to have all of the custom module elements loaded first.
 
-## hrefid srcid
+## hrefid, srcid
 
 Once custom elements are installable via a package manager, knowing the actual paths for items starts to get harder to know. This was simulated in the basic test in this repo, where `www/lib` is where all packages would be installed. In the basic test, [`basic-header`](https://github.com/jrburke/element/tree/master/tests/basic/www/lib/basic-header) was package directory that had a few resources, and the basic-header.html template wanted to refer to an image in that directory. It did so via `srcid`:
 
@@ -156,6 +162,3 @@ Just a concat of the files in the **parts** directory. [e.js](https://github.com
 * Show how two way data binding could be added via a module dependency mixin for a particular custom element module.
 * Convert the dataWires for data-prop and data-event in e.js to just be modules to mixin via normal module dependencies.
 
-
-* example project
-* work with requirejs?
