@@ -1403,19 +1403,19 @@ define(function(require, exports, module) {
    * could be improved by removing extraneous ./ and
    * ../ references.
    * @param  {String} id    possible local, relative ID
-   * @param  {String} relId ID to use as a basis for the
+   * @param  {String} refId ID to use as a basis for the
    * the local ID.
    * @return {String} full ID
    */
-  function makeFullId(id, relId) {
-    if (id.indexOf('.') === 0 && relId) {
-      // Trim off the last segment of the relId, as we want
+  function makeFullId(id, refId) {
+    if (id.indexOf('.') === 0 && refId) {
+      // Trim off the last segment of the refId, as we want
       // the "directory" level of the ID
-      var parts = relId.split('/');
+      var parts = refId.split('/');
       parts.pop();
-      relId = parts.join('/');
+      refId = parts.join('/');
 
-      id = (relId ? relId + '/' : '') + id;
+      id = (refId ? refId + '/' : '') + id;
     }
 
     return id;
@@ -1598,19 +1598,19 @@ define(function(require, exports, module) {
      * Replaces hrefid and srcid with href and src, using
      * require.toUrl(id) to convert the IDs to paths.
      * @param  {String} text  string of HTML
-     * @param  {String} relId the reference module ID to use,
+     * @param  {String} refId the reference module ID to use,
      * which is normallly the module ID associated with the
      * HTML string given as input.
      * @return {String} converted HTML string.
      */
-    idsToUrls: function(text, relId) {
+    idsToUrls: function(text, refId) {
       text = text
               .replace(hrefIdRegExp, function (match, id) {
-                id = makeFullId(id, relId);
+                id = makeFullId(id, refId);
                 return ' href="' + require.toUrl(id) + '"';
               })
               .replace(srcIdRegExp, function (match, id) {
-                id = makeFullId(id, relId);
+                id = makeFullId(id, refId);
                 return ' src="' + require.toUrl(id) + '"';
               });
       return text;
