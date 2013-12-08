@@ -2,6 +2,27 @@ Custom elements as seen through a module system.
 
 *Disclaimer: This is a work in progress, as a way for me to learn web components and to find a good answer for them in a module system. So feedback is welcome, it is very possible that I miss important parts of the specs.*
 
+* [Background](#background)
+* [Perceived issues with Web Components](#perceived-issues-with-web-components)
+* [Comparison with Polymer and X-Tags](#comparison-with-polymer-and-x-tags)
+* [Custom features](#custom-features)
+    * [Element lifecycle background](#element-lifecycle-background)
+    * [Mixins for Custom Element modules](#mixins-for-custom-element-modules)
+    * [Avoiding FOUC](#avoiding-fouc)
+    * [element.ready()](#element-ready)
+    * [Attribute wiring](#attribute-wiring)
+    * [Template support](#template-support)
+    * [hrefid, srcid](#hrefid-srcid)
+    * [Selector wiring](#selector-wiring)
+        * [data-prop](#data-prop)
+        * [data-event](#data-event)
+* [element.js construction](#elementjs-construction)
+* [Installation](#installation)
+* [Notes](#notes)
+* [TODO](#todo)
+
+## Background
+
 Web components as a concept are a great idea. However, by relying on expressing them primarily using HTML containers, it introduces some mismatches once the developer has a module system. With the coming module system in ECMAScript (ES) 6, this project explores how web components might look like if the developer has a module system available.
 
 This project uses AMD as the module system, but as the ES module system will have very similar capabilities to AMD. So using AMD is a good test bed to work out module-custom element interaction, and it should be easily portable to ES6 when it becomes available.
@@ -46,36 +67,77 @@ Related, but separately: I am very wary of anyone advocating HTML Imports for lo
 
 Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/) provide extras on top of the base capabilities being specified. While those things may be nice, and some are to feel out what might need to be standardized later, it gets hard to figure out what is custom and what is not, or to only take the custom parts that an app may use.
 
-The goal of this modular plugin approach was to provide a small base to provide basic template, ID-to-path and document.registration management, then encourage support for additional features as separate modules that can be mixed in to an element module's prototype.
+The goal of this modular plugin approach was to provide a small base to provide basic template, ID-to-path conversion, selector wiring and document.registration management, then encourage support for additional features as separate modules that can be mixed in to an element module's prototype.
 
 This results in each module for a custom element just needing to export the object properties that will be mixed in to the prototype for the element's constructor function. [Example from the tests](https://github.com/jrburke/element/blob/master/tests/basic/www/lib/basic-header/main.js).
 
 This loader plugin also avoids eval-related issues with [CSP](https://developer.mozilla.org/en-US/docs/Security/CSP/Introducing_Content_Security_Policy) because no eval-based approaches are used.
 
-## Lifecycle Background
+## Custom features
 
-By default, custom elements registered via `document.register` get notified of a few events:
+This plugin uses these standard web components features:
+
+* template element
+* document.register
+
+but uses a loader plugin to handle document.register, and uses modules for creating the custom element prototypes that is passed to document.register.
+
+Since a JS module is the primary definition of the custom element, then there needs to be a way to specify an HTML structure for the internals of the custom element.
+
+The custom parts of this loader plugin then are about wiring up an HTML structure via a template element, to allow using module IDs instead of paths for resources inside that template, and to allow a convention for wiring up bindings with the template.
+
+### Element lifecycle background
+
+By default, custom elements registered via `document.register` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#dfn-definition-construction-algorithm):
 
 * **createdCallback**: Called when an instance is created.
-* **enteredView**: Called when the element is inserted into document.
-* **leftView**: Called when element is removed from the document.
-* **attributeChanged**: Called when an attribute on the element is added, changed or removed.
+* **enteredViewCallback**: Called when the element is inserted into document.
+* **leftViewCallback**: Called when element is removed from the document.
+* **attributeChangedCallback**: Called when an attribute on the element is added, changed or removed.
 
 This loader plugin hooks into `createdCallback` to do the template wiring. The custom element can still have its own `createdCallback` on it, the plugin will call it after it does its work.
 
-The loader plugin also takes any attributes on the tag and sets those values using JS-equivalent names to the attribute names, to communicate the outside API values to the plugin instance.
+If the custom element does not implement an `attributeChangedCallback` method, then this plugin will wire up a default one that just takes any attribute change, and converts that to a property name value set. See [attribute wiring](#attribute-wiring) for more information.
 
-For example, for this use of a custom element:
+On to the more custom behaviors of this loader plugin:
 
-```html
-<custom-tag some-attr="foo">
+### Mixins for Custom Element modules
+
+The simplest form of creating a custom element module is to just to return an object literal that is the set a properties that the plugin will mix in to the prototype object for that custom element:
+
+```javascript
+define(function(require) {
+  return {
+    createdCallback: function () {},
+    ...
+  };
+});
 ```
 
-The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/lib/basic-header/main.js#L18). [Usage here](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/index.html#L7).
+However, the module can also export an array of objects, and each object's properties will be mixed in to the prototype. If there are overlapping property names, the last one in the array list wins.
 
-## Avoiding FOUC
+```javascript
+define(function(require) {
+  return [
+    {
+      someProp: function () {},
+    },
+    {
+      createdCallback: function () {},
+      // This someProp definition wins
+      someProp: function () {}
+    }
+  ];
+});
+```
 
-If you construct the HTML page by using a template tag with an ID of "body", like so:
+This mixin behavior is particularly useful for mixing in [selector wiring](#selector-wiring) behaviors.
+
+### Avoiding FOUC
+
+Since loading custom elements happens asynchronously, because that is how modules load, then there can be a Flash of Unstyled Content (FOUC), where the non-upgraded body of the document is shown before the custom elements are defined and used in the body.
+
+The plugin allows you to avoid that flash. If you construct the HTML page by using a template tag with an ID of "body", like so:
 
 ```html
 <body><template id="body">
@@ -87,7 +149,81 @@ Then the plugin will convert that template to the real body content once it know
 
 This may mean that any resources for the body, like images, may not start downloading until custom element initialization is done. I think this works out though, because those module elements may also affect layout, so best to have all of the custom module elements loaded first.
 
-## hrefid, srcid
+### element.ready()
+
+Since custom element loading is async, you should not run application code that depends on the custom elements being in the document on window.onload or document DOMContentLoaded. Instead, register a callback with `element.ready()` to get notification when custom elements have been loaded and applied:
+
+```javascript
+element.ready(function() {
+  // All custom elements needed for first page load have
+  // been loaded and instantiated when this callback is
+  // executed.
+});
+```
+
+### Attribute Wiring
+
+The loader plugin takes any attributes that were specified on the custom tag and sets those values using JS-equivalent names to the attribute names, to communicate the outside API values to the plugin instance.
+
+For example, for this use of a custom element:
+
+```html
+<custom-tag some-attr="foo">
+```
+
+The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/lib/basic-header/main.js#L18). [Usage here](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/index.html#L7).
+
+Additionally, if the element definition does not define an `attributeChangedCallback`, then this plugin will add a simple `attributeChangedCallback` that just does this attribute-to-property name conversion and set the value of that property name.
+
+### Template support
+
+If the module exports a property called `template`, then the loader plugin will make sure to load the template's dependencies before considering the current element module loaded.
+
+The loader plugin expects the following structure for the `template` property:
+
+```javascript
+{
+  template: {
+    // Array of dependencies for the template. This is
+    // normally just a list of custom-element names that
+    // are used in the template.
+    deps: [],
+    // A function that is called that generates a DOM
+    // node that is used for the element instance.
+    // The `this` value is this template object.
+    fn: function() {}
+  }
+}
+```
+
+That form is the most basic of the template forms and useful if you are using an HTML template library to generate the template function.
+
+The following `template` object structure is supported if the template is a simple text template that wants [hrefid and srcid](#hrefid-srcid) attributes processed:
+
+```javascript
+{
+  template: {
+    id: 'template/id',
+    deps: [],
+    translateIds: true,
+    text: '...'
+  }
+}
+```
+
+Note that `fn` is not provided in this case. The loader plugin will create an `fn` property for it after doing the hrefid and srcid conversions.
+
+If the `template!` loader plugin is used, then that plugin will generate this template object structure based on a module reference to an HTML file:
+
+```javascript
+define(function(require) {
+  return  {
+    template: require('template!./mytemplate.html')
+  }
+});
+```
+
+### hrefid, srcid
 
 Once custom elements are installable via a package manager, knowing the actual paths for items starts to get harder to know. This was simulated in the basic test in this repo, where `www/lib` is where all packages would be installed. In the basic test, [`basic-header`](https://github.com/jrburke/element/tree/master/tests/basic/www/lib/basic-header) was package directory that had a few resources, and the basic-header.html template wanted to refer to an image in that directory. It did so via `srcid`:
 
@@ -95,9 +231,13 @@ Once custom elements are installable via a package manager, knowing the actual p
 <img srcid="./localimage.png">
 ```
 
-The loader plugin will conver that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
+If the element's [template property](#template-support) allows for it, the loader plugin will convert that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
 
-## data-prop
+## Selector wiring
+
+xxxx
+
+#### data-prop
 
 If the template specifies `data-prop` as an attribute on a tag, then the element for that tag will be set as the value to that property on the custom element instance. For instance, with this tag in the element's template:
 
@@ -107,7 +247,7 @@ If the template specifies `data-prop` as an attribute on a tag, then the element
 
 then after the instance of the element is created, that instance can use `this.dialog` to refer to that element.
 
-## data-event
+#### data-event
 
 You can wire up event handlers by using a `data-event` attribute on a tag in the template. The general format is:
 
@@ -128,6 +268,10 @@ node.addEventListener('click', this.dialogClick.bind(this));
 node.addEventListener('click', this.dialogMouseOver.bind(this));
 ```
 
+## How is element.js constructed
+
+Just a concat of the files in the **parts** directory. [e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
+
 ## Installation
 
 They are still under development, so grab them from this repo in raw form:
@@ -147,22 +291,17 @@ You can also look at the `tests/basic` directory from this repo.
 
 Once they have more time to bake, the template plugin will move to its own repo and have its own distribution.
 
-## Cycles
+## Notes
+
+### Cycles
 
 Given the disconnected require calls done for custom elements found in templates, there is not a clear dependency graph between custom elements. This means it is hard to break cycles, otherwise known as circular dependencies.
 
 I expect circular dependencies in elements will be extremely rare. However, if they show up, you just need to explicitly state the dependency as a `require('element!dependency-tag')` dependency in the module, and that should allow for cycle resolution.
 
-## How is element.js constructed
-
-Just a concat of the files in the **parts** directory. [e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
-
 ## TODO
 
 * right now createdCallback does this.innerHTML = '', but allow for it to consume subelements?
-* document mixin stuff
-* separate things in docs that are specific to the plugin, not part of standard.
-* Implement attributeChanged
-* Show how two way data binding could be added via a module dependency mixin for a particular custom element module.
-.
+* check readme links
+* Show how two way data binding could be added via a selector mixin mixin.
 

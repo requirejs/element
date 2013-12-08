@@ -13,14 +13,22 @@ define(function(require, exports, module) {
 
       // Extra setup work to do once element is created.
       createdCallback: function () {
+        this.setItalicContent();
+      },
+
+      // Sets the contents of the italic element.
+      setItalicContent: function () {
         //this.italic was wired up via data-prop
-        this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
+        if (this.italic) {
+          this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
+        }
       },
 
       // Support for the some-suffix attribute on the element.
       _suffix: '',
       set someSuffix(value) {
         this._suffix = value;
+        this.setItalicContent();
       },
       get someSuffix() {
         return this._suffix;

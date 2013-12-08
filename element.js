@@ -1436,6 +1436,26 @@ define(function(require, exports, module) {
   }
 
   /**
+   * Given an attribute name, set the corresponding property
+   * name on the custom element instance, if it has such a
+   * property.
+   * @param  {Object} instance the custom element instance.
+   * @param  {String} attrName the attribute name.
+   * @param  {String} attrValue The attribute value.
+   */
+  function setPropFromAttr(instance, attrName, attrValue) {
+    var propName = makePropName(attrName);
+
+    // Purposely using this instead of getOwnPropertyDescriptor
+    // since the methos is likely on the object prototype. This
+    // means it could be hazardous to use attribute IDs that
+    // conflict with JS object properties.
+    if (propName in instance) {
+      instance[propName] = attrValue;
+    }
+  }
+
+  /**
    * Called once a template's dependencies have been loaded, and the
    * current element can be considered fully loaded.
    * @param  {String} id     module ID.
@@ -1446,11 +1466,11 @@ define(function(require, exports, module) {
    * the custome element is loaded.
    */
   function finishLoad(id, proto, selectorArray, onload) {
-    var oldCallback;
+    var oldCreated, oldAttributeChanged;
 
     // Wire up auto-injection of the template
     if (proto.template) {
-      oldCallback = proto.createdCallback;
+      oldCreated = proto.createdCallback;
       proto.createdCallback = function () {
         // TODO: allow these sub elements to be wired in to template?
         this.innerHTML = '';
@@ -1462,15 +1482,7 @@ define(function(require, exports, module) {
         // Wire attributes to this element's custom/getter setters
         for (i = 0; i < attrs.length; i++) {
           item = attrs.item(i);
-          propName = makePropName(item.nodeName);
-
-          // Purposely using this instead of getOwnPropertyDescriptor
-          // since the methos is likely on the object prototype. This
-          // means it could be hazardous to use attribute IDs that
-          // conflict with JS object properties.
-          if (propName in this) {
-            this[propName] = item.value;
-          }
+          setPropFromAttr(this, item.nodeName, item.value);
         }
 
         selectorArray.forEach(function (wire) {
@@ -1481,9 +1493,21 @@ define(function(require, exports, module) {
 
         this.appendChild(node);
 
-        if (oldCallback) {
-          return oldCallback.apply(this, slice.call(arguments));
+        if (oldCreated) {
+          return oldCreated.apply(this, slice.call(arguments));
         }
+      };
+    }
+
+    // Listen for attribute changed calls, and just trigger getter/setter
+    // calling if matching property. Only do this though if there is not
+    // an existing attributeChanged listener.
+    oldAttributeChanged = proto.attributeChangedCallback;
+    if (!proto.attributeChangedCallback) {
+      proto.attributeChangedCallback = function(name, oldValue, newValue) {
+        // Only called if value has changed, so no need to check
+        // oldValue !== newValue
+        setPropFromAttr(this, name, newValue);
       };
     }
 
