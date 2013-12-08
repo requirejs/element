@@ -21,7 +21,7 @@ define({
         // custom element.
         evt.stopPropagation();
         return this[method](evt);
-      }, false);
+      }.bind(this), false);
     }.bind(this));
   }
 });
