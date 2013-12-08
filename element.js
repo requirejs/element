@@ -1724,16 +1724,12 @@ define(function(require, exports, module) {
 
           var template = mod.template;
           if (template) {
-            if (!mod.moduleId) {
-              return onload.error(new Error(id + ': specified templateId but missing moduleId'));
-            }
-
             if (typeof template === 'string') {
-              mod.template = element.textToTemplate(template, mod.moduleId);
+              mod.template = element.textToTemplate(template, template.id);
             } else if (template.translateIds) {
               // An inlined template object. Finish out
               // work that can only be done at runtime.
-              var fullTemplateId = makeFullId(template.id, mod.moduleId);
+              var fullTemplateId = makeFullId(template.id, template.id);
               template.text = element.idsToUrls(template.text, fullTemplateId);
               if (!template.fn) {
                 template.fn = element.makeTemplateFn(template.text);

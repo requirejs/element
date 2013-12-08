@@ -2,10 +2,6 @@
 /*global define */
 define(function(require, exports, module) {
   return {
-    // Loader plugin needs to know the ID to use for
-    // relative ID resolution later.
-    moduleId: module.id,
-
     // The HTML template to use for this element.
     template: require('template!./template.html'),
 
