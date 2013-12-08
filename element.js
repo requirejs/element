@@ -1366,6 +1366,7 @@ define(function(require, exports, module) {
       hrefIdRegExp = /\shrefid="([^"]+)"/g,
       srcIdRegExp = /\ssrcid="([^"]+)"/g,
       buildProtocol = 'build:',
+      selectorProtocol = 'selector:',
       slice = Array.prototype.slice;
 
   if (typeof CustomElements !== 'undefined') {
@@ -1438,20 +1439,20 @@ define(function(require, exports, module) {
    * Called once a template's dependencies have been loaded, and the
    * current element can be considered fully loaded.
    * @param  {String} id     module ID.
-   * @param  {Object} mod    The module export for the custom element.
+   * @param  {Object} proto    the prototype for the custom element.
+   * @param  {Array} selectors an array of selectors to run and functions
+   * to execute for each node matched by the corresponding selector.
    * @param  {Function} onload function given by AMD load to call once
    * the custome element is loaded.
    */
-  function finishLoad(id, mod, onload) {
-    var proto = Object.create(HTMLElement.prototype);
-    Object.keys(mod).forEach(function (key) {
-      Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mod, key));
-    });
+  function finishLoad(id, proto, selectorArray, onload) {
+    var oldCallback;
 
     // Wire up auto-injection of the template
     if (proto.template) {
-      var oldCallback = proto.createdCallback;
+      oldCallback = proto.createdCallback;
       proto.createdCallback = function () {
+        // TODO: allow these sub elements to be wired in to template?
         this.innerHTML = '';
 
         var i, item, propName,
@@ -1472,9 +1473,9 @@ define(function(require, exports, module) {
           }
         }
 
-        element.dataWires.forEach(function (wire) {
-          slice.call(node.querySelectorAll('[' + wire[0] + ']')).forEach(function (node) {
-            wire[1](node, node.getAttribute(wire[0]), this);
+        selectorArray.forEach(function (wire) {
+          slice.call(node.querySelectorAll(wire[0])).forEach(function (node) {
+            wire[1].call(this, node);
           }.bind(this));
         }.bind(this));
 
@@ -1489,29 +1490,6 @@ define(function(require, exports, module) {
     onload(document.register(id, {
       prototype: proto
     }));
-  }
-
-  /**
-   * Responsible for loading any dependencies from a custom
-   * element's template object. Uses the element's module
-   * export's template.deps as the list of IDs. So, this
-   * should only be called once template normalization has
-   * happened.
-   * @param  {String} id     module ID.
-   * @param  {Object} mod    module export.
-   * @param  {Function} req    context-specific `require`
-   * function, comes from the AMD loader.
-   * @param  {Function} onload function to call once
-   * loading is complete, comes from the AMD loader.
-   */
-  function loadDeps(id, mod, req, onload) {
-    if (mod.template && mod.template.deps) {
-      req(mod.template.deps, function () {
-        finishLoad(id, mod, onload);
-      });
-    } else {
-      finishLoad(id, mod, onload);
-    }
   }
 
   /**
@@ -1531,46 +1509,6 @@ define(function(require, exports, module) {
         readyQueue.push(fn);
       }
     },
-
-    /**
-     * data- attributes to scan for in each instantiated element,
-     * done in the createdCallback step, before the element-specific
-     * createdCallback is run. Extensible, but this effectively is
-     * like a global. Better bet is to implement mixins for elements
-     * to use as dependencies. These may be moved to mixins once
-     * proving out the general loader plugin support.
-     * @type {Array}
-     */
-    dataWires: [
-      ['data-prop', function (node, value, instance) {
-        instance[value] = node;
-      }],
-      ['data-event', function (node, value, instance) {
-        // Value is of type 'name:value,name:value',
-        // with the :value part optional.
-        value.split(',').forEach(function (pair) {
-          var evtName, method,
-              parts = pair.split(':');
-
-          if (!parts[1]) {
-            parts[1] = parts[0];
-          }
-          evtName = parts[0].trim();
-          method = parts[1].trim();
-
-          if (typeof instance[method] !== 'function') {
-            throw new Error('"' + method + '" is not a function, cannot bind with data-event');
-          }
-
-          node.addEventListener(evtName, function(evt) {
-            // Treat these events as private to the
-            // custom element.
-            evt.stopPropagation();
-            return instance[method](evt);
-          }, false);
-        });
-      }]
-    ],
 
     /**
      * Makes a <template> element from a string of HTML.
@@ -1722,10 +1660,42 @@ define(function(require, exports, module) {
             return onload();
           }
 
-          var template = mod.template;
+          // Create the prototype for the custom element.
+          // Allow the module to be an array of mixins.
+          // If it is an array, then mix them all in to the
+          // prototype.
+          var proto = Object.create(HTMLElement.prototype),
+              mixins = Array.isArray(mod) ? mod : [mod],
+              selectors = {},
+              selectorArray = [];
+
+          mixins.forEach(function (mixin) {
+            Object.keys(mixin).forEach(function (key) {
+              if (key.indexOf(selectorProtocol) === 0) {
+                // A selector field. If dupes, only allow the last
+                // one to win, but it will always occupy the same
+                // place in the selectorArray. Use an array as the
+                // final storage format for optimized looping during
+                // each element instance's createdCallback.
+                var selectorKey = key.substring(selectorProtocol.length),
+                    index = selectorArray.length;
+
+                if (selectors.hasOwnProperty(selectorKey)) {
+                  index = selectors[selectorArray];
+                }
+
+                selectorArray[index] = [selectorKey, mixin[key]];
+                selectors[selectorKey] = index;
+              }
+
+              Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mixin, key));
+            });
+          });
+
+          var template = proto.template;
           if (template) {
             if (typeof template === 'string') {
-              mod.template = element.textToTemplate(template, template.id);
+              proto.template = element.textToTemplate(template, template.id);
             } else if (template.translateIds) {
               // An inlined template object. Finish out
               // work that can only be done at runtime.
@@ -1737,7 +1707,16 @@ define(function(require, exports, module) {
               template.translateIds = false;
             }
           }
-          loadDeps(id, mod, req, onload);
+
+          if (proto.template && proto.template.deps) {
+            // Load the template dependencies before considering
+            // this element completely loaded.
+            req(proto.template.deps, function () {
+              finishLoad(id, proto, selectorArray, onload);
+            });
+          } else {
+            finishLoad(id, proto, selectorArray, onload);
+          }
         });
       }
     }

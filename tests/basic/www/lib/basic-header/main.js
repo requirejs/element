@@ -1,40 +1,47 @@
 /*jshint browser: true */
 /*global define */
 define(function(require, exports, module) {
-  return {
-    // The HTML template to use for this element.
-    template: require('template!./template.html'),
+  return [
+    // mixins to do some data-prop and data-event wiring
+    require('selectors/data-prop'),
+    require('selectors/data-event'),
 
-    // Extra setup work to do once element is created.
-    createdCallback: function () {
-      //this.italic was wired up via data-prop
-      this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
-    },
+    // Main prototype implementation
+    {
+      // The HTML template to use for this element.
+      template: require('template!./template.html'),
 
-    // Support for the some-suffix attribute on the element.
-    _suffix: '',
-    set someSuffix(value) {
-      this._suffix = value;
-    },
-    get someSuffix() {
-      return this._suffix;
-    },
+      // Extra setup work to do once element is created.
+      createdCallback: function () {
+        //this.italic was wired up via data-prop
+        this.italic.textContent = 'THIS IS A HEADER: ' + this.foobar() + ': ' + this._suffix;
+      },
 
-    // Testing calling a local custom function.
-    foobar: function () {
-      return 'foobar';
-    },
+      // Support for the some-suffix attribute on the element.
+      _suffix: '',
+      set someSuffix(value) {
+        this._suffix = value;
+      },
+      get someSuffix() {
+        return this._suffix;
+      },
 
-    // Event handlers wired up via data-event.
-    click: function (evt) {
-      console.log('a click: ', evt.target);
-    },
-    mouseover: function (evt) {
-      console.log('a mouseover: ' + evt.target);
-    },
-    onSomethingClick: function (evt) {
-      evt.preventDefault();
-      console.log('something click: ' + evt.target);
+      // Testing calling a local custom function.
+      foobar: function () {
+        return 'foobar';
+      },
+
+      // Event handlers wired up via data-event.
+      click: function (evt) {
+        console.log('a click: ', evt.target);
+      },
+      mouseover: function (evt) {
+        console.log('a mouseover: ' + evt.target);
+      },
+      onSomethingClick: function (evt) {
+        evt.preventDefault();
+        console.log('something click: ' + evt.target);
+      }
     }
-  };
+  ];
 });

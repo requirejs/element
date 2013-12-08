@@ -1,0 +1,27 @@
+define({
+  'selector:[data-event]': function (node) {
+    // Value is of type 'name:value,name:value',
+    // with the :value part optional.
+    node.dataset.event.split(',').forEach(function (pair) {
+      var evtName, method,
+          parts = pair.split(':');
+
+      if (!parts[1]) {
+        parts[1] = parts[0];
+      }
+      evtName = parts[0].trim();
+      method = parts[1].trim();
+
+      if (typeof this[method] !== 'function') {
+        throw new Error('"' + method + '" is not a function, cannot bind with data-event');
+      }
+
+      node.addEventListener(evtName, function(evt) {
+        // Treat these events as private to the
+        // custom element.
+        evt.stopPropagation();
+        return this[method](evt);
+      }, false);
+    }.bind(this));
+  }
+});

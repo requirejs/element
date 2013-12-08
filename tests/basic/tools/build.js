@@ -1,10 +1,7 @@
 {
+    "mainConfigFile": "../www/app.js",
     "appDir": "../www",
-    "baseUrl": "lib",
     "paths": {
-        "app": "../app",
-        "element": "../../../../element",
-        "template": "../../../../template",
         "appIndex": "../index"
     },
     "dir": "../www-built",

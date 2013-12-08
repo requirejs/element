@@ -8,7 +8,8 @@ requirejs.config({
     paths: {
         app: '../app',
         element: '../../../../element',
-        template: '../../../../template'
+        template: '../../../../template',
+        selectors: '../../../../selectors'
     }
 });
 

@@ -159,6 +159,10 @@ Just a concat of the files in the **parts** directory. [e.js](https://github.com
 
 ## TODO
 
+* right now createdCallback does this.innerHTML = '', but allow for it to consume subelements?
+* document mixin stuff
+* separate things in docs that are specific to the plugin, not part of standard.
+* Implement attributeChanged
 * Show how two way data binding could be added via a module dependency mixin for a particular custom element module.
-* Convert the dataWires for data-prop and data-event in e.js to just be modules to mixin via normal module dependencies.
+.
 
