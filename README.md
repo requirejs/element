@@ -18,6 +18,7 @@ Custom elements as seen through a module system.
         * [data-event](#data-event)
 * [How is element.js constructed](#how-is-elementjs-constructed)
 * [Installation](#installation)
+* [Usage](#usage)
 * [Notes](#notes)
 * [TODO](#todo)
 
@@ -369,6 +370,43 @@ You can also look at the `tests/basic` directory from this repo.
 
 Once they have more time to bake, the template plugin will move to its own repo and have its own distribution.
 
+## Usage
+
+In your app's main module, ask for element as a dependency, and register a ready listener to do work that depends on any custom elements that are in the body of the HTML page:
+
+```javascript
+// app/main module
+define(function(require) {
+  require('element').ready(function () {
+    // all custom elements referenced in
+    // the HTML body have been loaded,
+    // registered, and instantiated.
+  })
+});
+```
+
+When adding new views to the HTML, each view should be [constructed as an HTML element](#mixins-for-custom-element-modules). Then, just use the `element!` to load those views dynamically:
+
+```javascript
+// this is inside a controller module that
+// at some point decides to load a new
+// view.
+require['element!account-view'], function (AccountView) {
+  // Create a new AccountView and insert into document
+  var accountNode = new AccountView();
+
+  // Listen to any DOM events in the list that
+  // would trigger a contoller
+  // change via listNode.addEventListener()
+  accountNode.addEventListener('click', function (evt) {
+    // account view clicked, do something.
+  }, false);
+
+  // Add to the DOM:
+  document.body.appendChild(accountNode);
+});
+```
+
 ## Notes
 
 ### Cycles
@@ -379,6 +417,6 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## TODO
 
-* Show how two way data binding could be added via a selector mixin mixin.
+* Show how two way data binding could be added via a selector mixin.
 * Show an example that consumes original childNodes.
 
