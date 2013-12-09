@@ -141,7 +141,9 @@ The plugin allows you to avoid that flash. If you construct the HTML page by usi
 
 ```html
 <body><template id="body">
-    regular body content here in waiting until registration starts
+    Regular body content is put here, and it will
+    not become the real body content until custom
+    element loading and registration is complete.
 </template></body>
 ```
 
@@ -257,7 +259,7 @@ Using the data-prop mixin as an example:
 }
 ```
 
-This results in an `instance.querySelectorAll('[data-prop'))`, and each node in that result is passed to the function mentioned above.
+This results in an `instance.querySelectorAll('[data-prop]'))`, and each node in that result is passed to the function mentioned above.
 
 #### selectors/data-prop
 
@@ -377,8 +379,6 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## TODO
 
-* check readme links
-* update sample
 * Show how two way data binding could be added via a selector mixin mixin.
 * Show an example that consumes original childNodes.
 
