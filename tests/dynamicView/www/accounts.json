@@ -1,0 +1,26 @@
+{
+  "doc": "http://adventuretime.wikia.com/wiki/The_Creeps",
+  "accounts": [
+    {
+      "name": "Professor Pants",
+      "settings": {
+        "homePage": true,
+        "notifications": true,
+        "customUrl": true
+      }
+    },
+    {
+      "name": "Randy Butternubs",
+      "settings": {
+        "homePage": true,
+        "customUrl": true
+      }
+    },
+    {
+      "name": "Prince Hotbod",
+      "settings": {
+        "homePage": true
+      }
+    }
+  ]
+}
