@@ -235,9 +235,26 @@ If the element's [template property](#template-support) allows for it, the loade
 
 ## Selector wiring
 
-xxxx
+The loader plugin looks for special properties on the custom element prototype when constructing new instances, and will run node.querySelectorAll() queries based on those property names.
 
-#### data-prop
+Combined with the [mixin capability](#mixins-for-custom-element-modules), this allows some automated wiring of behaviors to DOM nodes internal to the custom element.
+
+If the prototype property name starts with `selector:`, then the rest of that property name will be used as a selector for a node.querySelectorAll() call, and each node found via that call will be passed to the function value for that property name.
+
+Using the data-prop mixin as an example:
+
+```javascript
+{
+  'selector:[data-prop]': function (node) {
+    // `this` is still the custom element instance.
+    this[node.dataset.prop] = node;
+  }
+}
+```
+
+This results in an `instance.querySelectorAll('[data-prop'))`, and each node in that result is passed to the function mentioned above.
+
+#### selectors/data-prop
 
 If the template specifies `data-prop` as an attribute on a tag, then the element for that tag will be set as the value to that property on the custom element instance. For instance, with this tag in the element's template:
 
@@ -247,7 +264,31 @@ If the template specifies `data-prop` as an attribute on a tag, then the element
 
 then after the instance of the element is created, that instance can use `this.dialog` to refer to that element.
 
-#### data-event
+Code is at [selectors/data-prop](https://raw.github.com/jrburke/element/master/selectors/data-prop.js).
+
+Example usage:
+
+```javascript
+// A custom element that mixes in data-prop:
+define(function(require) {
+  return [
+    require('selectors/data-prop'),
+
+    // Main custom element implementation here
+    {
+      createdCallback: function () {
+        // Assuming template specified
+        // `data-prop="dialog"` on an element,
+        // the following would work.
+        console.log(this.dialog.classList);
+      },
+      ...
+    }
+  ];
+});
+```
+
+#### selectors/data-event
 
 You can wire up event handlers by using a `data-event` attribute on a tag in the template. The general format is:
 
@@ -268,9 +309,39 @@ node.addEventListener('click', this.dialogClick.bind(this));
 node.addEventListener('click', this.dialogMouseOver.bind(this));
 ```
 
+Code is at [selectors/data-event](https://raw.github.com/jrburke/element/master/selectors/data-event.js).
+
+Example usage:
+
+```javascript
+// A custom element that mixes in data-event:
+define(function(require) {
+  return [
+    require('selectors/data-event'),
+
+    // Main custom element implementation here
+    {
+      createdCallback: function () {},
+
+      // If the template specified
+      // `data-event="click:onDialogClick"`
+      // on an element, the following would
+      // be called if that element was
+      // clicked.
+      onDialogClick: function (evt) {}
+      ...
+    }
+  ];
+});
+```
+
 ## How is element.js constructed
 
-Just a concat of the files in the **parts** directory. [e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
+Just a concat of the files in the **parts** directory.
+
+[e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
+
+As `document.register` is implemented by browsers, this plugin should shrink to a size that is smaller than e.js.
 
 ## Installation
 
@@ -303,5 +374,6 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 * right now createdCallback does this.innerHTML = '', but allow for it to consume subelements?
 * check readme links
+* update sample
 * Show how two way data binding could be added via a selector mixin mixin.
 
