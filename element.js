@@ -1466,18 +1466,19 @@ define(function(require, exports, module) {
    * the custome element is loaded.
    */
   function finishLoad(id, proto, selectorArray, onload) {
-    var oldCreated, oldAttributeChanged;
+    var oldCreated;
 
     // Wire up auto-injection of the template
     if (proto.template) {
       oldCreated = proto.createdCallback;
       proto.createdCallback = function () {
-        // TODO: allow these sub elements to be wired in to template?
-        this.innerHTML = '';
-
         var i, item, propName,
-            node = this.template.fn(),
+            node = this.template.fn(this),
             attrs = this.attributes;
+
+        // Clear out previous contents. If they were needed, they
+        // would have been consumed by the this.template.fn() call.
+        this.innerHTML = '';
 
         // Wire attributes to this element's custom/getter setters
         for (i = 0; i < attrs.length; i++) {
@@ -1502,7 +1503,6 @@ define(function(require, exports, module) {
     // Listen for attribute changed calls, and just trigger getter/setter
     // calling if matching property. Only do this though if there is not
     // an existing attributeChanged listener.
-    oldAttributeChanged = proto.attributeChangedCallback;
     if (!proto.attributeChangedCallback) {
       proto.attributeChangedCallback = function(name, oldValue, newValue) {
         // Only called if value has changed, so no need to check
