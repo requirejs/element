@@ -173,7 +173,7 @@ For example, for this use of a custom element:
 <custom-tag some-attr="foo">
 ```
 
-The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/lib/basic-header/main.js#L18). [Usage here](https://github.com/jrburke/element/blob/e86d7b63e3b23d808263bf61da9b031e993bad6c/tests/basic/www/index.html#L7).
+The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/0119a37f8816bbd29ad8e7c701169a6927e0b6ff/tests/basic/www/lib/basic-header/main.js#L27). [Usage here](https://github.com/jrburke/element/blob/0119a37f8816bbd29ad8e7c701169a6927e0b6ff/tests/basic/www/index.html#L7).
 
 Additionally, if the element definition does not define an `attributeChangedCallback`, then this plugin will add a simple `attributeChangedCallback` that just does this attribute-to-property name conversion and set the value of that property name.
 
