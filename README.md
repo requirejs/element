@@ -16,7 +16,7 @@ Custom elements as seen through a module system.
     * [Selector wiring](#selector-wiring)
         * [data-prop](#data-prop)
         * [data-event](#data-event)
-* [element.js construction](#elementjs-construction)
+* [How is element.js constructed](#how-is-elementjs-constructed)
 * [Installation](#installation)
 * [Notes](#notes)
 * [TODO](#todo)
@@ -77,8 +77,8 @@ This loader plugin also avoids eval-related issues with [CSP](https://developer.
 
 This plugin uses these standard web components features:
 
-* template element
-* document.register
+* [template element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
+* [document.register](http://w3c.github.io/webcomponents/spec/custom/#dfn-document-register)
 
 but uses a loader plugin to handle document.register, and uses modules for creating the custom element prototypes that is passed to document.register.
 
@@ -190,8 +190,13 @@ The loader plugin expects the following structure for the `template` property:
     deps: [],
     // A function that is called that generates a DOM
     // node that is used for the element instance.
-    // The `this` value is this template object.
-    fn: function() {}
+    // The `this` value is this template object,
+    // and the `node`argument is the custom element
+    // that will use the return value. If the node
+    // wants to use existing children, do so in the
+    // fn function -- they are cleared out after
+    // fn is called.
+    fn: function(node) {}
   }
 }
 ```
@@ -372,8 +377,8 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## TODO
 
-* right now createdCallback does this.innerHTML = '', but allow for it to consume subelements?
 * check readme links
 * update sample
 * Show how two way data binding could be added via a selector mixin mixin.
+* Show an example that consumes original childNodes.
 
