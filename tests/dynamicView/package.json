@@ -1,6 +1,9 @@
 {
   "amd": {},
   "volo": {
-    "baseUrl": "www/lib"
+    "baseUrl": "www/lib",
+    "dependencies": {
+      "mustache": "github:janl/mustache.js/0.7.3"
+    }
   }
 }

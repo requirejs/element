@@ -419,4 +419,6 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 * Show how two way data binding could be added via a selector mixin.
 * Show an example that consumes original childNodes.
-
+* shadowDom use?
+* CSS: how to load
+* expand polymer/xtag comparison?

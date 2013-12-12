@@ -11,8 +11,7 @@ define(function(require, exports, module) {
       readyQueue = [],
       tagRegExp = /<(\w+-\w+)(\s|>)/g,
       commentRegExp = /<!--*.?-->/g,
-      hrefIdRegExp = /\shrefid="([^"]+)"/g,
-      srcIdRegExp = /\ssrcid="([^"]+)"/g,
+      attrIdRegExp = /\s(hrefid|srcid)="([^"]+)"/g,
       buildProtocol = 'build:',
       selectorProtocol = 'selector:',
       slice = Array.prototype.slice;
@@ -108,19 +107,17 @@ define(function(require, exports, module) {
    * current element can be considered fully loaded.
    * @param  {String} id     module ID.
    * @param  {Object} proto    the prototype for the custom element.
-   * @param  {Array} selectors an array of selectors to run and functions
-   * to execute for each node matched by the corresponding selector.
    * @param  {Function} onload function given by AMD load to call once
    * the custome element is loaded.
    */
-  function finishLoad(id, proto, selectorArray, onload) {
+  function finishLoad(id, proto, onload) {
     var oldCreated;
 
     // Wire up auto-injection of the template
     if (proto.template) {
       oldCreated = proto.createdCallback;
       proto.createdCallback = function () {
-        var i, item, propName,
+        var i, item,
             node = this.template.fn(this),
             attrs = this.attributes;
 
@@ -134,13 +131,10 @@ define(function(require, exports, module) {
           setPropFromAttr(this, item.nodeName, item.value);
         }
 
-        selectorArray.forEach(function (wire) {
-          slice.call(node.querySelectorAll(wire[0])).forEach(function (node) {
-            wire[1].call(this, node);
-          }.bind(this));
-        }.bind(this));
-
-        this.appendChild(node);
+        if (node) {
+          element.applySelectors(this, node);
+          this.appendChild(node);
+        }
 
         if (oldCreated) {
           return oldCreated.apply(this, slice.call(arguments));
@@ -182,6 +176,8 @@ define(function(require, exports, module) {
       }
     },
 
+    makeFullId: makeFullId,
+
     /**
      * Makes a <template> element from a string of HTML.
      * @param  {String} text
@@ -213,15 +209,13 @@ define(function(require, exports, module) {
      * HTML string given as input.
      * @return {String} converted HTML string.
      */
-    idsToUrls: function(text, refId) {
+    idsToUrls: function (text, refId) {
       text = text
-              .replace(hrefIdRegExp, function (match, id) {
+              .replace(attrIdRegExp, function (match, type, id) {
                 id = makeFullId(id, refId);
-                return ' href="' + require.toUrl(id) + '"';
-              })
-              .replace(srcIdRegExp, function (match, id) {
-                id = makeFullId(id, refId);
-                return ' src="' + require.toUrl(id) + '"';
+                var attr = type === 'hrefid' ? 'href' : 'src';
+
+                return ' ' + attr + '="' + require.toUrl(id) + '"';
               });
       return text;
     },
@@ -288,6 +282,22 @@ define(function(require, exports, module) {
     },
 
     /**
+     * Applies the 'selector:' function properties to a template node.
+     * @param  {Element} customElement instance of custom element
+     * @param  {Node} templateNode  the template node that will be used
+     * as the custom element's interior contents
+     */
+    applySelectors: function (customElement, templateNode) {
+      var selectorArray = customElement._element.selectorArray;
+
+      selectorArray.forEach(function (wire) {
+        slice.call(templateNode.querySelectorAll(wire[0])).forEach(function (node) {
+          wire[1].call(customElement, node);
+        });
+      });
+    },
+
+    /**
      * The AMD loader plugin API. Called by an AMD loader
      * to handle 'element!' resources.
      * @param  {String} id     module ID to load.
@@ -341,6 +351,14 @@ define(function(require, exports, module) {
               selectors = {},
               selectorArray = [];
 
+          // Define a property to hold all the element-specific information
+          Object.defineProperty(proto, '_element', {
+            enumerable: false,
+            configurable: false,
+            writable: false,
+            value: {}
+          });
+
           mixins.forEach(function (mixin) {
             Object.keys(mixin).forEach(function (key) {
               if (key.indexOf(selectorProtocol) === 0) {
@@ -364,6 +382,8 @@ define(function(require, exports, module) {
             });
           });
 
+          proto._element.selectorArray = selectorArray;
+
           var template = proto.template;
           if (template) {
             if (typeof template === 'string') {
@@ -384,10 +404,10 @@ define(function(require, exports, module) {
             // Load the template dependencies before considering
             // this element completely loaded.
             req(proto.template.deps, function () {
-              finishLoad(id, proto, selectorArray, onload);
+              finishLoad(id, proto, onload);
             });
           } else {
-            finishLoad(id, proto, selectorArray, onload);
+            finishLoad(id, proto, onload);
           }
         });
       }

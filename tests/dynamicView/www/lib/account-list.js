@@ -1,1 +1,1 @@
-define(['basic-header/main'], function (m) {return m;});
+define(['account-list/main'], function (m) {return m;});

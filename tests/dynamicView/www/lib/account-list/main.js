@@ -5,46 +5,24 @@ define(function(require, exports, module) {
     // mixins to do some data-prop and data-event wiring
     require('selectors/data-prop'),
     require('selectors/data-event'),
+    require('mixins/model'),
 
     // Main prototype implementation
     {
       // The HTML template to use for this element.
       template: require('template!./template.html'),
 
-      // Standard lifecycle events
-      enteredViewCallback: function () {
-        this.render();
-      },
-
       // Support for the url attribute on the element.
       _url: '',
-      set url(value) {
-        this._url = value;
-        this.update();
-      },
       get url() {
         return this._url;
       },
-
-      _data: null,
-      update: function () {
-        if (!this._url) {
-          return;
-        }
-
+      set url(value) {
+        this._url = value;
         this.fetchText(this._url, function (text) {
-          this._data = JSON.parse(text);
-          this.render();
-        }.bind(this);
+          this.model = JSON.parse(text);
+        }.bind(this));
       },
-
-      render: function () {
-        if (!this._data) {
-          return;
-        }
-
-
-      }
 
       // Event handlers wired up via data-event.
       onSomethingClick: function (evt) {

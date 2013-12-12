@@ -40,6 +40,8 @@ define(function(require, exports, module) {
   }
 
   return {
+    fetchText: fetcText,
+
     /**
      * AMD loader plugin API. Loads the resource. Called by an
      * AMD loader.
