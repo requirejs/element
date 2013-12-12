@@ -422,3 +422,14 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 * shadowDom use?
 * CSS: how to load
 * expand polymer/xtag comparison?
+
+Updates to do:
+* element is needed because need outside ID for the tag ID,
+  not the module's actual ID (packages issue)
+* only depends on a prototype.template() function now.
+* template depends on element, it uses 'element!' in deps name, and it
+uses element for the document.register() functionality.
+
+## Spec questions
+
+* If document.register in browser, when parsing HTML, need to wait for async load of things before starting. A "delay parsing" api, that then is called later to continue? Would allow for img/ Using template tag, but requires special knowledge.

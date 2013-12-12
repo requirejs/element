@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*global define */
-define(function(require, exports, module) {
+define(function(require) {
   return [
     // mixins to do some data-prop and data-event wiring
     require('selectors/data-prop'),
