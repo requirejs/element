@@ -15,7 +15,7 @@ Custom elements as seen through a module system.
     * [template.ready()](#template-ready)
     * [hrefid, srcid](#hrefid-srcid)
     * [Selector wiring](#selector-wiring)
-* [Example selectors](#example-selectors)
+    * [Example selectors](#example-selectors)
         * [data-prop](#data-prop)
         * [data-event](#data-event)
 * [How is element.js constructed](#how-is-elementjs-constructed)
@@ -202,7 +202,7 @@ Once custom elements are installable via a package manager, knowing the actual p
 
 The `template` loader plugin will convert that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
 
-## Selector wiring
+### Selector wiring
 
 The `template` loader plugin looks for special properties on the custom element prototype when constructing new instances, and will run node.querySelectorAll() queries based on those property names.
 
@@ -223,7 +223,7 @@ Using the data-prop mixin as an example:
 
 This results in an `instance.querySelectorAll('[data-prop]'))`, and each node in that result is passed to the function mentioned above.
 
-## Example selectors
+### Example selectors
 
 These example selectors can be used alongside the `template` loader plugin to do some auto-wiring of some internal DOM structure to a custom element instance.
 
