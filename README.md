@@ -423,7 +423,6 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 * CSS: how to load
 * expand polymer/xtag comparison?
 
-
 on refactor:
 * update in file comments
 * update readme
@@ -432,21 +431,20 @@ on refactor:
 Updates to do:
 
 * element is needed because need outside ID for
-the tag ID,
-  not the module's actual ID (packages issue)
-* only depends on a prototype.template() function now.
-* creates an _element property to hold selectors and multiplexed function listeners. But only functions, no getters/setters.
-* selectors: are only remembered once, on init.
+the tag ID, not the module's actual ID (packages issue)
+* creates an _element property to hold selectors and multiplexed lifeCycle event listeners. But only functions, no getters/setters.
+* mixins that are arrays are traversed for nested mixins.
 
 * template depends on element, it uses 'element!' in deps name, and it
 uses element for the document.register() functionality.
+* selectors: are only remembered once, on init.
 
 ## Spec questions
 
 * If document.register in browser, when parsing HTML, need to wait for async load of things before starting. A "delay parsing" api, that then is called later to continue? Would allow for img/ Using template tag, but requires special knowledge.
 
 * Need to manually do the setPropFromAttr after creation, but should that happen automatically?
-Same with attibuteChagnedCallback.
+Same with attibuteChangedCallback.
 
 * :unresolved matches selectors that have not been upgraded, for FOUC handling, but also, could poll until no others for load event?
 
@@ -454,4 +452,6 @@ Same with attibuteChagnedCallback.
 
 * is="" attribute, why there, why not just a regular custom element name?
 
+* events for the lifecycle callbacks?
 
+* what is the spec around grabbing template children?

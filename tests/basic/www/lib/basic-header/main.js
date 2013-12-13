@@ -1,11 +1,11 @@
 /*jshint browser: true */
 /*global define */
 define(function(require) {
+  // Return an array of objects that are all mixed in to the
+  // final custom element prototype.
   return [
-    // mixins to do some data-prop and data-event wiring,
-    // and to set up interior template.
-    require('selectors/data-prop'),
-    require('selectors/data-event'),
+    // mixins for base functionality, and an HTML-based template.
+    require('./base'),
     require('template!./template.html'),
 
     // Main prototype implementation

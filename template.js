@@ -3,20 +3,23 @@
 
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
-    // Referencing element module to make sure
-    // document.register shim is in place. Over time,
-    // as browsers implement it, this require call
-    // can be removed.
-    element = require('element'),
+      slice = Array.prototype.slice,
       isReady = false,
       readyQueue = [],
       tagRegExp = /<(\w+-\w+)(\s|>)/g,
       commentRegExp = /<!--*.?-->/g,
       attrIdRegExp = /\s(hrefid|srcid)="([^"]+)"/g,
+      selectorProtocol = 'selector:',
       buildProtocol = 'build:',
       moduleConfig = module.config(),
       depPrefix = 'element!',
       buildMap = {};
+
+  // Referencing element module to make sure
+  // document.register shim is in place. Over time,
+  // as browsers implement it, this require call
+  // can be removed.
+  require('element');
 
   if (moduleConfig.hasOwnProperty(depPrefix)) {
     depPrefix = moduleConfig.depPrefix;
@@ -82,7 +85,7 @@ define(function(require, exports, module) {
       this.innerHTML = '';
 
       if (node) {
-        element.applySelectors(this, node);
+        template.applySelectors(this, node);
         this.appendChild(node);
       }
   }
@@ -252,6 +255,49 @@ define(function(require, exports, module) {
     },
 
     templateCreatedCallback: templateCreatedCallback,
+
+    /**
+     * Applies the 'selector:' function properties to a template node.
+     * @param  {Element} customElement instance of custom element
+     * @param  {Node} templateNode  the template node that will be used
+     * as the custom element's interior contents
+     */
+    applySelectors: function (customElement, templateNode) {
+      var selectors,
+          proto = Object.getPrototypeOf(customElement),
+          templateStorage = proto._template;
+
+      if (!templateStorage) {
+        // Set up the storage cache of selector keys, for faster
+        // iteration on subsequent instances.
+        Object.defineProperty(proto, '_template', {
+          enumerable: false,
+          configurable: false,
+          writable: false,
+          value: {}
+        });
+        templateStorage = proto._template;
+        templateStorage.selectors = [];
+
+        Object.keys(proto).forEach(function (key) {
+          var selectorKey;
+
+          // Remember the selector fields for later, faster processing.
+          if (key.indexOf(selectorProtocol) === 0) {
+            selectorKey = key.substring(selectorProtocol.length);
+            templateStorage.selectors.push([selectorKey, proto[key]]);
+          }
+        });
+      }
+
+      selectors = templateStorage.selectors;
+
+      selectors.forEach(function (wire) {
+        slice.call(templateNode.querySelectorAll(wire[0])).forEach(function (node) {
+          wire[1].call(customElement, node);
+        });
+      });
+    },
 
     /**
      * AMD loader plugin API. Loads the resource. Called by an

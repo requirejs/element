@@ -1358,8 +1358,14 @@ CustomElement code near the bottom of this file is
 from polymer-v0.0.20131107
 */
 define(function() {
-  var selectorProtocol = 'selector:',
-      slice = Array.prototype.slice;
+  var slice = Array.prototype.slice,
+      lifeCycleEvents = {
+        createdCallback: true,
+        enteredViewCallback: true,
+        leftViewCallback: true,
+        attributeChangedCallback: true
+      };
+
   /**
    * Converts an attribute like a-long-attr to aLongAttr
    * @param  {String} attrName The attribute name
@@ -1422,28 +1428,35 @@ define(function() {
     }
   }
 
+  function mix(proto, mixin) {
+    if (Array.isArray(mixin)) {
+      mixin.forEach(function (mixin) {
+        mix(proto, mixin);
+      });
+      return;
+    }
+
+    Object.keys(mixin).forEach(function (key) {
+      var descriptor = Object.getOwnPropertyDescriptor(mixin, key);
+
+      if (Array.isArray(descriptor.value)) {
+        mix(proto, descriptor.value);
+      } else {
+        // Lifecycle events can be multiplexed, but not other values.
+        if (lifeCycleEvents.hasOwnProperty(key)) {
+          mixFnProp(proto, key, descriptor.value);
+        } else {
+          Object.defineProperty(proto, key, descriptor);
+        }
+      }
+    });
+  }
+
   /**
    * Main module export. These methods are visible to
    * any module.
    */
   var element = {
-
-    /**
-     * Applies the 'selector:' function properties to a template node.
-     * @param  {Element} customElement instance of custom element
-     * @param  {Node} templateNode  the template node that will be used
-     * as the custom element's interior contents
-     */
-    applySelectors: function (customElement, templateNode) {
-      var selectors = customElement._element.selectors;
-
-      selectors.forEach(function (wire) {
-        slice.call(templateNode.querySelectorAll(wire[0])).forEach(function (node) {
-          wire[1].call(customElement, node);
-        });
-      });
-    },
-
     /**
      * The AMD loader plugin API. Called by an AMD loader
      * to handle 'element!' resources.
@@ -1468,9 +1481,7 @@ define(function() {
         // Allow the module to be an array of mixins.
         // If it is an array, then mix them all in to the
         // prototype.
-        var proto = Object.create(HTMLElement.prototype),
-            mixins = Array.isArray(mod) ? mod : [mod],
-            selectors = [];
+        var proto = Object.create(HTMLElement.prototype);
 
         // Define a property to hold all the element-specific information
         Object.defineProperty(proto, '_element', {
@@ -1481,35 +1492,14 @@ define(function() {
         });
         proto._element.props = {};
 
-        mixins.forEach(function (mixin) {
-          Object.keys(mixin).forEach(function (key) {
-            var selectorKey, descriptor;
-
-            // Remember the selector fields for later, faster processing.
-            if (key.indexOf(selectorProtocol) === 0) {
-              selectorKey = key.substring(selectorProtocol.length);
-              selectors.push([selectorKey, mixin[key]]);
-            }
-
-            descriptor = Object.getOwnPropertyDescriptor(mixin, key);
-
-            // Functions can be multiplexed, but not other values.
-            if (typeof descriptor.value === 'function') {
-              mixFnProp(proto, key, descriptor.value);
-            } else {
-              Object.defineProperty(proto, key, descriptor);
-            }
-          });
-        });
-
-        proto._element.selectors = selectors;
+        mix(proto, mod);
 
         // Wire attributes to this element's custom/getter setters.
         // Because of the 'unshift' use, this will actually execute
         // before the templateCreatedCallback, which is good. The
         // exterior API should set up the internal state before
         // other parts of createdCallback run.
-        mixFnProp(proto, 'createdCallback', function attrCreatedCallback() {
+        mixFnProp(proto, 'createdCallback', function attrCreated() {
           var i, item,
               attrs = this.attributes;
 
@@ -1520,15 +1510,14 @@ define(function() {
         }, 'unshift');
 
         // Listen for attribute changed calls, and just trigger getter/setter
-        // calling if matching property. Only do this though if there is not
-        // an existing attributeChanged listener.
-        if (!proto.attributeChangedCallback) {
-          proto.attributeChangedCallback = function(name, oldValue, newValue) {
+        // calling if matching property. Make sure it is the first one in
+        // the listener set.
+        mixFnProp(proto, 'attributeChangedCallback',
+        function attrChanged(name, oldValue, newValue) {
             // Only called if value has changed, so no need to check
             // oldValue !== newValue
             setPropFromAttr(this, name, newValue);
-          };
-        }
+        }, 'unshift');
 
         onload(document.register(id, {
           prototype: proto
