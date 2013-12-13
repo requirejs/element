@@ -5,18 +5,21 @@ Custom elements as seen through a module system.
 * [Background](#background)
 * [Perceived issues with Web Components](#perceived-issues-with-web-components)
 * [Comparison with Polymer and X-Tags](#comparison-with-polymer-and-x-tags)
-* [Custom features](#custom-features)
-    * [Element lifecycle background](#element-lifecycle-background)
+* [Element lifecycle background](#element-lifecycle-background)
+* [Standard Web Component features used](#standard-web-component-features-used)
+* [`element` loader plugin custom features](#element-loader-plugin-custom-features)
     * [Mixins for Custom Element modules](#mixins-for-custom-element-modules)
-    * [Avoiding FOUC](#avoiding-fouc)
-    * [element.ready()](#element-ready)
     * [Attribute wiring](#attribute-wiring)
-    * [Template support](#template-support)
+* [`template` loader plugin custom features](#template-loader-plugin-custom-features)
+    * [Avoiding FOUC](#avoiding-fouc)
+    * [template.ready()](#template-ready)
     * [hrefid, srcid](#hrefid-srcid)
     * [Selector wiring](#selector-wiring)
+* [Example selectors](#example-selectors)
         * [data-prop](#data-prop)
         * [data-event](#data-event)
 * [How is element.js constructed](#how-is-elementjs-constructed)
+* [How is template.js constructed](#how-is-templatejs-constructed)
 * [Installation](#installation)
 * [Usage](#usage)
 * [Notes](#notes)
@@ -40,7 +43,7 @@ However, HTML Imports should not be needed with this modular approach, and becau
 
 To avoid the FOUC issue, this plugin supports using a `template` tag to define the body, and once custom elements are loaded, that template is converted to the real contents of the body element.
 
-Additionally, it supports using `hrefid` and `srcid` as attributes in place of `href` and `src` respectively. The `*id` versions allow using a `moduleID + '.' + extension` value, which is converted by the loader to a path when the templates are injected, changing them to regular `href` and `src` values in the process.
+Additionally, the `template` loader plugin supports using `hrefid` and `srcid` as attributes in place of `href` and `src` respectively. The `*id` versions allow using a `moduleID + '.' + extension` value, which is converted by the loader to a path when the templates are injected, changing them to regular `href` and `src` values in the process.
 
 More details on those features below, but first, more on the perceived problems with the current state of Web Components, from the point of view of a person using modules.
 
@@ -60,10 +63,6 @@ Right now the examples showing **custom elements name themselves**. This is not 
 
 Maybe not all HTML cases in the future will be able to use modules, and that some of the decisions in the web component stack, like the ones around HTML Imports, are there for those cases. I wanted to show how a modular approach can streamline some decisions and allow custom elements to be reusable in more ways, in particular by package managers. This fits well with the encapsulation goals of custom elements.
 
-I also want to be sure that decisions for the web component stack do not harm modular use.
-
-Related, but separately: I am very wary of anyone advocating HTML Imports for loading scripts. There is the script tag for path-based script loading, and the ES Module Loader API for anything else (or an AMD module loader in the meantime).
-
 ## Comparison with Polymer and X-Tags
 
 Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/) provide extras on top of the base capabilities being specified. While those things may be nice, and some are to feel out what might need to be standardized later, it gets hard to figure out what is custom and what is not, or to only take the custom parts that an app may use.
@@ -74,20 +73,7 @@ This results in each module for a custom element just needing to export the obje
 
 This loader plugin also avoids eval-related issues with [CSP](https://developer.mozilla.org/en-US/docs/Security/CSP/Introducing_Content_Security_Policy) because no eval-based approaches are used.
 
-## Custom features
-
-This plugin uses these standard web components features:
-
-* [template element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
-* [document.register](http://w3c.github.io/webcomponents/spec/custom/#dfn-document-register)
-
-but uses a loader plugin to handle document.register, and uses modules for creating the custom element prototypes that is passed to document.register.
-
-Since a JS module is the primary definition of the custom element, then there needs to be a way to specify an HTML structure for the internals of the custom element.
-
-The custom parts of this loader plugin then are about wiring up an HTML structure via a template element, to allow using module IDs instead of paths for resources inside that template, and to allow a convention for wiring up bindings with the template.
-
-### Element lifecycle background
+## Element lifecycle background
 
 By default, custom elements registered via `document.register` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#dfn-definition-construction-algorithm):
 
@@ -96,11 +82,30 @@ By default, custom elements registered via `document.register` can implement sta
 * **leftViewCallback**: Called when element is removed from the document.
 * **attributeChangedCallback**: Called when an attribute on the element is added, changed or removed.
 
+Since these are special callbacks, and multiple mixins may want to listen for them, the `element` loader plugin allows multiple mixins to listen for these events.
+
 This loader plugin hooks into `createdCallback` to do the template wiring. The custom element can still have its own `createdCallback` on it, the plugin will call it after it does its work.
 
 If the custom element does not implement an `attributeChangedCallback` method, then this plugin will wire up a default one that just takes any attribute change, and converts that to a property name value set. See [attribute wiring](#attribute-wiring) for more information.
 
-On to the more custom behaviors of this loader plugin:
+## Standard Web Component features used
+
+The `element` and `template` loader plugins uses these standard web components features:
+
+* [template element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
+* [document.register](http://w3c.github.io/webcomponents/spec/custom/#dfn-document-register)
+
+but uses a loader plugin to handle document.register, and uses modules for creating the custom element prototypes that is passed to document.register. The `template` plugin creates HTML snippets, via the template element, for the interior DOM structure of an element.
+
+## `element` loader plugin custom features
+
+The `element` loader plugin provides these services:
+
+* Takes a mixin of properties, and converts that to an object prototype and calls `document.register` using the module ID referenced in the `element!` dependency reference.
+* Multiplexes [lifecycle events]() mentioned by the mixins.
+* Automatically wires up any attribute value that is set to setting that value on an instance's associated property.
+
+More details follow.
 
 ### Mixins for Custom Element modules
 
@@ -132,13 +137,36 @@ define(function(require) {
 });
 ```
 
-This mixin behavior is particularly useful for mixing in [selector wiring](#selector-wiring) behaviors.
+The only exception to the "last one wins" is if the property name is one of the [element lifecycle callback names](#element-lifecycle-background). Those are all stored and fired in the sequence they are mixed in to the element prototype.
+
+This mixin behavior is particularly useful for mixing in [selector wiring](#selector-wiring) behaviors when using the `template` loader plugin.
+
+### Attribute Wiring
+
+`element` takes any attributes that were specified on the custom tag and sets those values using JS-equivalent names to the attribute names, to communicate the outside API values to the plugin instance.
+
+For example, for this use of a custom element:
+
+```html
+<custom-tag some-attr="foo">
+```
+
+The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [the `someSuffix` section in basic-header](https://github.com/jrburke/element/blob/master/tests/basic/www/lib/basic-header/main.js). [Usage here](https://github.com/jrburke/element/blob/master/tests/basic/www/index.html).
+
+Additionally, if an attribute is changed on a custom element instance, the `element` plugin listens for `attributeChangedCallback` and it will automatically trigger this attribute-to-property name conversion and set the value of that property name.
+
+
+## `template` loader plugin custom features
+
+The `template` loader plugin allows specifying an HTML file as the basis to use for the interior DOM structure of an element. It knows how to output a mixin object value that can be used by the `element` loader plugin.
+
+In addition to doing the basic DOM construction, it provides these other capabilities:
 
 ### Avoiding FOUC
 
 Since loading custom elements happens asynchronously, because that is how modules load, then there can be a Flash of Unstyled Content (FOUC), where the non-upgraded body of the document is shown before the custom elements are defined and used in the body.
 
-The plugin allows you to avoid that flash. If you construct the HTML page by using a template tag with an ID of "body", like so:
+The `template` plugin allows you to avoid that flash. If you construct the HTML page by using a template tag with an ID of "body", like so:
 
 ```html
 <body><template id="body">
@@ -148,86 +176,19 @@ The plugin allows you to avoid that flash. If you construct the HTML page by usi
 </template></body>
 ```
 
-Then the plugin will convert that template to the real body content once it knows all custom elements have loaded.
+Then the plugin will convert that template to the real body content once it knows all custom elements have loaded that were registered in that template body.
 
 This may mean that any resources for the body, like images, may not start downloading until custom element initialization is done. I think this works out though, because those module elements may also affect layout, so best to have all of the custom module elements loaded first.
 
-### element.ready()
+### template.ready()
 
-Since custom element loading is async, you should not run application code that depends on the custom elements being in the document on window.onload or document DOMContentLoaded. Instead, register a callback with `element.ready()` to get notification when custom elements have been loaded and applied:
+Since custom element loading is async, you should not run application code that depends on the custom elements being in the document on window.onload or document DOMContentLoaded. Instead, register a callback with `template.ready()` to get notification when custom elements have been loaded and applied:
 
 ```javascript
-element.ready(function() {
+template.ready(function() {
   // All custom elements needed for first page load have
   // been loaded and instantiated when this callback is
   // executed.
-});
-```
-
-### Attribute Wiring
-
-The loader plugin takes any attributes that were specified on the custom tag and sets those values using JS-equivalent names to the attribute names, to communicate the outside API values to the plugin instance.
-
-For example, for this use of a custom element:
-
-```html
-<custom-tag some-attr="foo">
-```
-
-The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [this example from the tests](https://github.com/jrburke/element/blob/0119a37f8816bbd29ad8e7c701169a6927e0b6ff/tests/basic/www/lib/basic-header/main.js#L27). [Usage here](https://github.com/jrburke/element/blob/0119a37f8816bbd29ad8e7c701169a6927e0b6ff/tests/basic/www/index.html#L7).
-
-Additionally, if the element definition does not define an `attributeChangedCallback`, then this plugin will add a simple `attributeChangedCallback` that just does this attribute-to-property name conversion and set the value of that property name.
-
-### Template support
-
-If the module exports a property called `template`, then the loader plugin will make sure to load the template's dependencies before considering the current element module loaded.
-
-The loader plugin expects the following structure for the `template` property:
-
-```javascript
-{
-  template: {
-    // Array of dependencies for the template. This is
-    // normally just a list of custom-element names that
-    // are used in the template.
-    deps: [],
-    // A function that is called that generates a DOM
-    // node that is used for the element instance.
-    // The `this` value is this template object,
-    // and the `node`argument is the custom element
-    // that will use the return value. If the node
-    // wants to use existing children, do so in the
-    // fn function -- they are cleared out after
-    // fn is called.
-    fn: function(node) {}
-  }
-}
-```
-
-That form is the most basic of the template forms and useful if you are using an HTML template library to generate the template function.
-
-The following `template` object structure is supported if the template is a simple text template that wants [hrefid and srcid](#hrefid-srcid) attributes processed:
-
-```javascript
-{
-  template: {
-    id: 'template/id',
-    deps: [],
-    translateIds: true,
-    text: '...'
-  }
-}
-```
-
-Note that `fn` is not provided in this case. The loader plugin will create an `fn` property for it after doing the hrefid and srcid conversions.
-
-If the `template!` loader plugin is used, then that plugin will generate this template object structure based on a module reference to an HTML file:
-
-```javascript
-define(function(require) {
-  return  {
-    template: require('template!./mytemplate.html')
-  }
 });
 ```
 
@@ -239,11 +200,11 @@ Once custom elements are installable via a package manager, knowing the actual p
 <img srcid="./localimage.png">
 ```
 
-If the element's [template property](#template-support) allows for it, the loader plugin will convert that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
+The `template` loader plugin will convert that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
 
 ## Selector wiring
 
-The loader plugin looks for special properties on the custom element prototype when constructing new instances, and will run node.querySelectorAll() queries based on those property names.
+The `template` loader plugin looks for special properties on the custom element prototype when constructing new instances, and will run node.querySelectorAll() queries based on those property names.
 
 Combined with the [mixin capability](#mixins-for-custom-element-modules), this allows some automated wiring of behaviors to DOM nodes internal to the custom element.
 
@@ -261,6 +222,10 @@ Using the data-prop mixin as an example:
 ```
 
 This results in an `instance.querySelectorAll('[data-prop]'))`, and each node in that result is passed to the function mentioned above.
+
+## Example selectors
+
+These example selectors can be used alongside the `template` loader plugin to do some auto-wiring of some internal DOM structure to a custom element instance.
 
 #### selectors/data-prop
 
@@ -349,7 +314,13 @@ Just a concat of the files in the **parts** directory.
 
 [e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
 
-As `document.register` is implemented by browsers, this plugin should shrink to a size that is smaller than e.js.
+As `document.register` is implemented by browsers, this plugin should shrink to just being the contents in e.js.
+
+## How is template.js constructed
+
+[template.js](https://github.com/jrburke/element/blob/master/template.js) is just a regular AMD loader plugin that returns an object structure that plays well with `element` mixins. It depends on `element` for the document.register shim and for the Custom Elements bootstrapping done on document load, to set up template.ready().
+
+As `document.register` is implemented by browsers, this plugin will shrink a little bit, and the template.ready approach may change.
 
 ## Installation
 
@@ -372,12 +343,12 @@ Once they have more time to bake, the template plugin will move to its own repo 
 
 ## Usage
 
-In your app's main module, ask for element as a dependency, and register a ready listener to do work that depends on any custom elements that are in the body of the HTML page:
+In your app's main module, ask for `template` as a dependency, and register a ready listener to do work that depends on any custom elements that are in the body of the HTML page:
 
 ```javascript
 // app/main module
 define(function(require) {
-  require('element').ready(function () {
+  require('template').ready(function () {
     // all custom elements referenced in
     // the HTML body have been loaded,
     // registered, and instantiated.
@@ -423,30 +394,15 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 * CSS: how to load
 * expand polymer/xtag comparison?
 
-on refactor:
-* update in file comments
-* update readme
-* update sample
-
-Updates to do:
-
-* element is needed because need outside ID for
-the tag ID, not the module's actual ID (packages issue)
-* creates an _element property to hold selectors and multiplexed lifeCycle event listeners. But only functions, no getters/setters.
-* mixins that are arrays are traversed for nested mixins.
-
-* template depends on element, it uses 'element!' in deps name, and it
-uses element for the document.register() functionality.
-* selectors: are only remembered once, on init.
-
 ## Spec questions
 
 * If document.register in browser, when parsing HTML, need to wait for async load of things before starting. A "delay parsing" api, that then is called later to continue? Would allow for img/ Using template tag, but requires special knowledge.
 
-* Need to manually do the setPropFromAttr after creation, but should that happen automatically?
-Same with attibuteChangedCallback.
-
 * :unresolved matches selectors that have not been upgraded, for FOUC handling, but also, could poll until no others for load event?
+
+* Some "customElementsReady" when all unknown elements resolved?
+
+* Need to manually do the setPropFromAttr after creation, but should that happen automatically? Same with attibuteChangedCallback.
 
 * what triggers "all unresolved have been resolved"?
 
