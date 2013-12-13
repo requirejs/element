@@ -2,15 +2,14 @@
 /*global define */
 define(function(require) {
   return [
-    // mixins to do some data-prop and data-event wiring
+    // mixins to do some data-prop and data-event wiring,
+    // and to set up interior template.
     require('selectors/data-prop'),
     require('selectors/data-event'),
+    require('template!./template.html'),
 
     // Main prototype implementation
     {
-      // The HTML template to use for this element.
-      template: require('template!./template.html'),
-
       // Extra setup work to do once element is created.
       createdCallback: function () {
         this.setItalicContent();

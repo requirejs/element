@@ -1408,7 +1408,7 @@ define(function() {
     };
   }
 
-  function mixProp(proto, prop, value, operation) {
+  function mixFnProp(proto, prop, value, operation) {
     if (proto.hasOwnProperty(prop)) {
       var existing = proto._element.props[prop];
       if (!existing) {
@@ -1483,39 +1483,33 @@ define(function() {
 
         mixins.forEach(function (mixin) {
           Object.keys(mixin).forEach(function (key) {
+            var selectorKey, descriptor;
+
+            // Remember the selector fields for later, faster processing.
             if (key.indexOf(selectorProtocol) === 0) {
-              var selectorKey = key.substring(selectorProtocol.length);
+              selectorKey = key.substring(selectorProtocol.length);
               selectors.push([selectorKey, mixin[key]]);
             }
 
-            Object.defineProperty(proto, key, Object.getOwnPropertyDescriptor(mixin, key));
+            descriptor = Object.getOwnPropertyDescriptor(mixin, key);
+
+            // Functions can be multiplexed, but not other values.
+            if (typeof descriptor.value === 'function') {
+              mixFnProp(proto, key, descriptor.value);
+            } else {
+              Object.defineProperty(proto, key, descriptor);
+            }
           });
         });
 
         proto._element.selectors = selectors;
-
-        // Wire up auto-injection of the template
-        if (proto.template) {
-          mixProp(proto, 'createdCallback', function templateCreatedCallback() {
-            var node = this.template();
-
-            // Clear out previous contents. If they were needed, they
-            // would have been consumed by the this.template.fn() call.
-            this.innerHTML = '';
-
-            if (node) {
-              element.applySelectors(this, node);
-              this.appendChild(node);
-            }
-          }, 'unshift');
-        }
 
         // Wire attributes to this element's custom/getter setters.
         // Because of the 'unshift' use, this will actually execute
         // before the templateCreatedCallback, which is good. The
         // exterior API should set up the internal state before
         // other parts of createdCallback run.
-        mixProp(proto, 'createdCallback', function attrCreatedCallback() {
+        mixFnProp(proto, 'createdCallback', function attrCreatedCallback() {
           var i, item,
               attrs = this.attributes;
 
@@ -1524,7 +1518,6 @@ define(function() {
             setPropFromAttr(this, item.nodeName, item.value);
           }
         }, 'unshift');
-
 
         // Listen for attribute changed calls, and just trigger getter/setter
         // calling if matching property. Only do this though if there is not

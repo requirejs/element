@@ -3,6 +3,11 @@
 
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
+    // Referencing element module to make sure
+    // document.register shim is in place. Over time,
+    // as browsers implement it, this require call
+    // can be removed.
+    element = require('element'),
       isReady = false,
       readyQueue = [],
       tagRegExp = /<(\w+-\w+)(\s|>)/g,
@@ -16,12 +21,6 @@ define(function(require, exports, module) {
   if (moduleConfig.hasOwnProperty(depPrefix)) {
     depPrefix = moduleConfig.depPrefix;
   }
-
-  // Only reference element module to make sure
-  // document.register shim is in place. Over time,
-  // as browsers implement it, this require call
-  // can be removed.
-  require('element');
 
   if (typeof CustomElements !== 'undefined') {
     templateDiv = document.createElement('div');
@@ -73,6 +72,19 @@ define(function(require, exports, module) {
     }
 
     return id;
+  }
+
+  function templateCreatedCallback() {
+      var node = this.template();
+
+      // Clear out previous contents. If they were needed, they
+      // would have been consumed by the this.template.fn() call.
+      this.innerHTML = '';
+
+      if (node) {
+        element.applySelectors(this, node);
+        this.appendChild(node);
+      }
   }
 
   if (typeof XMLHttpRequest !== 'undefined') {
@@ -283,7 +295,10 @@ define(function(require, exports, module) {
             if (isBuild) {
               buildMap[id] = templateObj;
             }
-            onload(templateObj.fn);
+            onload({
+              createdCallback: templateCreatedCallback,
+              template: templateObj.fn
+            });
           });
         }, onload.error);
       }
@@ -309,9 +324,10 @@ define(function(require, exports, module) {
         }
 
         write.asModule(pluginName + '!' + id,
-          "define(['" + module.id + "'" + depString + ", function (template) { return " +
-          "template.objToFn(" + JSON.stringify(buildMap[id]) +
-          "); });\n");
+          "define(['" + module.id + "'" + depString + ", function (template) { return {\n" +
+          "createdCallback: template.templateCreatedCallback,\n" +
+          "template: template.objToFn(" + JSON.stringify(buildMap[id]) +
+          ")}; });\n");
       }
     }
   };
