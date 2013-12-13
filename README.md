@@ -423,6 +423,12 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 * CSS: how to load
 * expand polymer/xtag comparison?
 
+
+on refactor:
+* update in file comments
+* update readme
+* update sample
+
 Updates to do:
 
 * element is needed because need outside ID for

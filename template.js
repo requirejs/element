@@ -224,7 +224,8 @@ define(function(require, exports, module) {
 
       obj = {
         id: id,
-        deps: deps
+        deps: deps,
+        text: text
       };
 
       if (!skipTranslateIds) {
@@ -249,6 +250,8 @@ define(function(require, exports, module) {
       var text = template.idsToUrls(obj.text, obj.id);
       return template.makeTemplateFn(text);
     },
+
+    templateCreatedCallback: templateCreatedCallback,
 
     /**
      * AMD loader plugin API. Loads the resource. Called by an
@@ -324,7 +327,7 @@ define(function(require, exports, module) {
         }
 
         write.asModule(pluginName + '!' + id,
-          "define(['" + module.id + "'" + depString + ", function (template) { return {\n" +
+          "define(['" + module.id + "'" + depString + "], function (template) { return {\n" +
           "createdCallback: template.templateCreatedCallback,\n" +
           "template: template.objToFn(" + JSON.stringify(buildMap[id]) +
           ")}; });\n");

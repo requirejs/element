@@ -8,7 +8,7 @@
     "modules": [
         {
             "name": "app",
-            "include": "element!build:appIndex.html"
+            "include": "template!build:appIndex.html"
         }
     ],
     // Set to no minification for educational purposes.
