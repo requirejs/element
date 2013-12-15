@@ -32,8 +32,9 @@ define(function(require, exports, module) {
         evt.stopPropagation();
         evt.preventDefault();
 
-        var account, customEvent,
-            accountId = parseInt(evt.target.href.substring('#account:'.length), 0);
+        var accountId, account, customEvent,
+            href = evt.target.href.split('#')[1];
+            accountId = parseInt(href.substring('#ccount:'.length), 0);
 
         // Find the account.
         this.model.accounts.some(function(acct) {
@@ -44,15 +45,13 @@ define(function(require, exports, module) {
         });
 
         if (account) {
-console.log('got here: ' + account.id);
           customEvent = new CustomEvent("accountClicked", {
             detail: {
               account: account
             }
           });
+          this.dispatchEvent(customEvent);
         }
-
-        this.dispatchEvent(customEvent);
       }
     }
   ];
