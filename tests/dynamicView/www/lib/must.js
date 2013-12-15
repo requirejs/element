@@ -46,7 +46,6 @@ define(function(require) {
             mustacheFn = mustache.compile(idParsed.text);
 
         onload({
-          createdCallback: template.templateCreatedCallback,
           template: function () {
             //`this` in here is the custom element instance
             var m = this.model;
@@ -65,7 +64,10 @@ define(function(require) {
               model['toUrl:hrefId:' + fullId] = ' href="' + req.toUrl(fullId) + '"';
             });
 
-            return toDom(mustacheFn(model));
+            var dom = toDom(mustacheFn(model));
+            template.applySelectors(this, dom);
+
+            return dom;
           }
         });
       }, onload.error);

@@ -29,14 +29,14 @@ define(function(require, exports, module) {
 
       // Event handlers wired up via data-event.
       onAccountClick: function (evt) {
-console.log('got here: ' + account.id);
         evt.stopPropagation();
         evt.preventDefault();
+
         var account, customEvent,
             accountId = parseInt(evt.target.href.substring('#account:'.length), 0);
 
         // Find the account.
-        this._data.accounts.some(function(acct) {
+        this.model.accounts.some(function(acct) {
           if (acct.id === accountId) {
             account = acct;
             return true;
