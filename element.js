@@ -1359,12 +1359,8 @@ from polymer-v0.0.20131107
 */
 define(function() {
   var slice = Array.prototype.slice,
-      lifeCycleEvents = {
-        createdCallback: true,
-        enteredViewCallback: true,
-        leftViewCallback: true,
-        attributeChangedCallback: true
-      };
+      callbackSuffix = 'Callback',
+      callbackSuffixLength = callbackSuffix.length;
 
   /**
    * Converts an attribute like a-long-attr to aLongAttr
@@ -1437,13 +1433,17 @@ define(function() {
     }
 
     Object.keys(mixin).forEach(function (key) {
-      var descriptor = Object.getOwnPropertyDescriptor(mixin, key);
+      var suffixIndex,
+          descriptor = Object.getOwnPropertyDescriptor(mixin, key);
 
       if (Array.isArray(descriptor.value)) {
         mix(proto, descriptor.value);
       } else {
-        // Lifecycle events can be multiplexed, but not other values.
-        if (lifeCycleEvents.hasOwnProperty(key)) {
+        // Any property that ends in Callback, like the custom element
+        // lifecycle events, can be multiplexed.
+        suffixIndex = key.indexOf(callbackSuffix);
+        if (suffixIndex > 0 &&
+            suffixIndex === key.length - callbackSuffixLength) {
           mixFnProp(proto, key, descriptor.value);
         } else {
           Object.defineProperty(proto, key, descriptor);

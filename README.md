@@ -84,9 +84,7 @@ By default, custom elements registered via `document.register` can implement sta
 
 Since these are special callbacks, and multiple mixins may want to listen for them, the `element` loader plugin allows multiple mixins to listen for these events.
 
-This loader plugin hooks into `createdCallback` to do the template wiring. The custom element can still have its own `createdCallback` on it, the plugin will call it after it does its work.
-
-If the custom element does not implement an `attributeChangedCallback` method, then this plugin will wire up a default one that just takes any attribute change, and converts that to a property name value set. See [attribute wiring](#attribute-wiring) for more information.
+The `template` loader plugin hooks into `createdCallback` to do the template wiring. The custom element can still have its own `createdCallback` on it. See [Mixins for Custom Element modules](#mixins-for-custom-element-modules) for more information.
 
 ## Standard Web Component features used
 
@@ -137,7 +135,9 @@ define(function(require) {
 });
 ```
 
-The only exception to the "last one wins" is if the property name is one of the [element lifecycle callback names](#element-lifecycle-background). Those are all stored and fired in the sequence they are mixed in to the element prototype.
+The only exception to the "last one wins" is if the property name ends in "Callback". Those are all stored and fired in the sequence they are mixed in to the element prototype. This multiplexing of Callback-style properties means that all of the [element lifecycle callbacks](#element-lifecycle-background) are multiplexed.
+
+The Callback multiplexing also gives a convention for mixins that want to allow multiple function calls for custom element changes that should be done all in the same turn. This is in contrast to triggering custom events, which can complete asynchronously. Events should be favored if notification of a state change can happen async. This is not necessarily true for some things like the lifecycle callbacks.
 
 This mixin behavior is particularly useful for mixing in [selector wiring](#selector-wiring) behaviors when using the `template` loader plugin.
 

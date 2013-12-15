@@ -28,15 +28,29 @@ define(function(require, exports, module) {
       },
 
       // Event handlers wired up via data-event.
-      onSomethingClick: function (evt) {
+      onAccountClick: function (evt) {
+console.log('got here: ' + account.id);
+        evt.stopPropagation();
         evt.preventDefault();
-        var accoutName = evt.target.href.substring('account:'.length),
-            account = this._data[accoutName],
-            customEvent = new CustomEvent("accountClicked", {
-              detail: {
-                account: account
-              }
-            });
+        var account, customEvent,
+            accountId = parseInt(evt.target.href.substring('#account:'.length), 0);
+
+        // Find the account.
+        this._data.accounts.some(function(acct) {
+          if (acct.id === accountId) {
+            account = acct;
+            return true;
+          }
+        });
+
+        if (account) {
+console.log('got here: ' + account.id);
+          customEvent = new CustomEvent("accountClicked", {
+            detail: {
+              account: account
+            }
+          });
+        }
 
         this.dispatchEvent(customEvent);
       }

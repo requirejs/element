@@ -6,7 +6,6 @@ define(function(require) {
       template = require('template'),
       attrIdRegExp = /\s(hrefid|srcid)="([^"]+)"/g;
 
-
   function parseIds(text) {
     var idMap = {},
         srcIds = [],
