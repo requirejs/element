@@ -1,7 +1,7 @@
 define(function (require) {
-    var element = require('element');
+    var template = require('template');
 
-    element.ready(function() {
+    template.ready(function() {
         console.log('FINISHED LOADING');
     });
 });

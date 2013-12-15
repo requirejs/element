@@ -5,8 +5,8 @@ define({
   },
   set model(model) {
     this._model = model;
-    if (this.template && this.template.fn) {
-      this.appendChild(this.template.fn(this));
+    if (typeof this.template === 'function') {
+      this.appendChild(this.template(this));
     }
   }
 });

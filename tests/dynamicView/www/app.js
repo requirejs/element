@@ -9,7 +9,8 @@ requirejs.config({
         app: '../app',
         element: '../../../../element',
         template: '../../../../template',
-        selectors: '../../../../selectors'
+        selectors: '../../../../selectors',
+        mixins: '../../../../mixins'
     }
 });
 

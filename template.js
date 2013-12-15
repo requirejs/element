@@ -80,11 +80,11 @@ define(function(require, exports, module) {
   function templateCreatedCallback() {
       var node = this.template();
 
-      // Clear out previous contents. If they were needed, they
-      // would have been consumed by the this.template.fn() call.
-      this.innerHTML = '';
-
       if (node) {
+        // Clear out previous contents. If they were needed, they
+        // would have been consumed by the this.template.fn() call.
+        this.innerHTML = '';
+
         template.applySelectors(this, node);
         this.appendChild(node);
       }

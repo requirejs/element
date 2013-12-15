@@ -1,16 +1,19 @@
 /*jshint browser: true */
 /*global define */
 define(function(require, exports, module) {
+  var fetchText = require('template').fetchText;
+
   return [
     // mixins to do some data-prop and data-event wiring
     require('selectors/data-prop'),
     require('selectors/data-event'),
     require('mixins/model'),
 
+    // The HTML template to use for this element.
+    require('must!./template.html'),
+
     // Main prototype implementation
     {
-      // The HTML template to use for this element.
-      template: require('template!./template.html'),
 
       // Support for the url attribute on the element.
       _url: '',
@@ -19,7 +22,7 @@ define(function(require, exports, module) {
       },
       set url(value) {
         this._url = value;
-        this.fetchText(this._url, function (text) {
+        fetchText(this._url, function (text) {
           this.model = JSON.parse(text);
         }.bind(this));
       },
@@ -36,31 +39,6 @@ define(function(require, exports, module) {
             });
 
         this.dispatchEvent(customEvent);
-      },
-
-      // Helpers
-
-      fetchText: function (url, onload, onerror) {
-        var xhr = new XMLHttpRequest();
-
-        xhr.open('GET', url, true);
-        xhr.onreadystatechange = function() {
-          var status, err;
-
-          if (xhr.readyState === 4) {
-            status = xhr.status;
-            if (status > 399 && status < 600) {
-              //An http 4xx or 5xx error. Signal an error.
-              err = new Error(url + ' HTTP status: ' + status);
-              err.xhr = xhr;
-              onerror(err);
-            } else {
-              onload(xhr.responseText);
-            }
-          }
-        };
-        xhr.responseType = 'text';
-        xhr.send(null);
       }
     }
   ];
