@@ -69,7 +69,6 @@ define(function(require, exports, module) {
         });
 
         var dom = toDom(this.template.fn(model));
-        template.applySelectors(this, dom);
 
         return dom;
       };

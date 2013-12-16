@@ -388,6 +388,8 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## TODO
 
+* Document templateInsertedCallback
+
 * Show how two way data binding could be added via a selector mixin.
 * Show an example that consumes original childNodes.
 * shadowDom use?

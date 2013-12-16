@@ -3,13 +3,11 @@
 
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
-      slice = Array.prototype.slice,
       isReady = false,
       readyQueue = [],
       tagRegExp = /<(\w+-\w+)(\s|>)/g,
       commentRegExp = /<!--*.?-->/g,
       attrIdRegExp = /\s(hrefid|srcid)="([^"]+)"/g,
-      selectorProtocol = 'selector:',
       buildProtocol = 'build:',
       moduleConfig = module.config(),
       depPrefix = 'element!',
@@ -85,8 +83,10 @@ define(function(require, exports, module) {
         // would have been consumed by the this.template.fn() call.
         this.innerHTML = '';
 
-        template.applySelectors(this, node);
         this.appendChild(node);
+        if (this.templateInsertedCallback) {
+          this.templateInsertedCallback();
+        }
       }
   }
 
@@ -257,49 +257,6 @@ define(function(require, exports, module) {
     templateCreatedCallback: templateCreatedCallback,
 
     /**
-     * Applies the 'selector:' function properties to a template node.
-     * @param  {Element} customElement instance of custom element
-     * @param  {Node} templateNode  the template node that will be used
-     * as the custom element's interior contents
-     */
-    applySelectors: function (customElement, templateNode) {
-      var selectors,
-          proto = Object.getPrototypeOf(customElement),
-          templateStorage = proto._template;
-
-      if (!templateStorage) {
-        // Set up the storage cache of selector keys, for faster
-        // iteration on subsequent instances.
-        Object.defineProperty(proto, '_template', {
-          enumerable: false,
-          configurable: false,
-          writable: false,
-          value: {}
-        });
-        templateStorage = proto._template;
-        templateStorage.selectors = [];
-
-        Object.keys(proto).forEach(function (key) {
-          var selectorKey;
-
-          // Remember the selector fields for later, faster processing.
-          if (key.indexOf(selectorProtocol) === 0) {
-            selectorKey = key.substring(selectorProtocol.length);
-            templateStorage.selectors.push([selectorKey, proto[key]]);
-          }
-        });
-      }
-
-      selectors = templateStorage.selectors;
-
-      selectors.forEach(function (wire) {
-        slice.call(templateNode.querySelectorAll(wire[0])).forEach(function (node) {
-          wire[1].call(customElement, node);
-        });
-      });
-    },
-
-    /**
      * AMD loader plugin API. Loads the resource. Called by an
      * AMD loader.
      * @param  {String} id     resource ID to load.
@@ -385,8 +342,8 @@ define(function(require, exports, module) {
     // This section wires up processing of the initial document DOM.
     // In a real document.register browser, this would not be possible
     // to do, as document.register would grab all the tags before this
-    // would likely run. Need a document.register.disabled capability?
-    // also, onDomDone just a hack related to DOMContentLoaded not firing.
+    // would likely run. Also, onDomDone just a hack related to
+    // DOMContentLoaded not firing.
     var onDom, onDomDone = false;
     onDom = function () {
       if (onDomDone) {

@@ -4,7 +4,8 @@ define({
     return this._model;
   },
   set model(model) {
-    var firstTime = !this._model,
+    var node,
+        firstTime = !this._model,
         hasTemplate = typeof this.template === 'function';
 
     this._model = model;
@@ -18,7 +19,12 @@ define({
         this.innerHTML = '';
       }
 
-      this.appendChild(this.template(this));
+      node = this.template(this);
+      this.appendChild(node);
+
+      if (this.templateInsertedCallback) {
+        this.templateInsertedCallback();
+      }
     }
 
     // A multiplexed callback mixin. If it exists,
