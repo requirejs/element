@@ -285,7 +285,8 @@ define(function(require) {
       // on an element, the following would
       // be called if that element was
       // clicked.
-      onDialogClick: function (evt) {}
+      onDialogClick: function (evt) {},
+
       ...
     }
   ];
