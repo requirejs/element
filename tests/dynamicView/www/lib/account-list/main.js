@@ -34,7 +34,7 @@ define(function(require, exports, module) {
 
         var accountId, account, customEvent,
             href = evt.target.href.split('#')[1];
-            accountId = parseInt(href.substring('#ccount:'.length), 0);
+            accountId = parseInt(href.substring('account:'.length), 0);
 
         // Find the account.
         this.model.accounts.some(function(acct) {
