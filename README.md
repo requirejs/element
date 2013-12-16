@@ -14,7 +14,7 @@ Custom elements as seen through a module system.
     * [Avoiding FOUC](#avoiding-fouc)
     * [template.ready()](#template-ready)
     * [hrefid, srcid](#hrefid-srcid)
-    * [`templateInsertedCallback`](#templateInsertedCallback)
+    * [`templateInsertedCallback`](#templateinsertedcallback)
 * [Example mixins](#example-mixins)
     * [data-prop](#data-prop)
     * [data-event](#data-event)
