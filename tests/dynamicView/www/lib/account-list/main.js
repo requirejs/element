@@ -45,7 +45,7 @@ define(function(require, exports, module) {
         });
 
         if (account) {
-          customEvent = new CustomEvent("accountClicked", {
+          customEvent = new CustomEvent('accountSelected', {
             detail: {
               account: account
             }

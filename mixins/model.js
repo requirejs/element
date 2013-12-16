@@ -4,21 +4,29 @@ define({
     return this._model;
   },
   set model(model) {
-    this._model = model;
-    this.modelChangedCallback();
-  },
+    var firstTime = !this._model,
+        hasTemplate = typeof this.template === 'function';
 
-  /**
-   * A multiplexed callback mixin, so that other mixins
-   * can implement a callback that gets called when the
-   * model changes.
-   */
-  modelChangedCallback: function () {
-    if (!this._modelInit) {
-      this._modelInit = true;
-      if (typeof this.template === 'function') {
-        this.appendChild(this.template(this));
+    this._model = model;
+
+    if ((firstTime && hasTemplate) ||
+       (!firstTime && !this.modelChangedCallback)) {
+      // Clear out old template. On first call,
+      // createdCallback should have consumed
+      // any children set from outside.
+      if (!firstTime){
+        this.innerHTML = '';
       }
+
+      this.appendChild(this.template(this));
+    }
+
+    // A multiplexed callback mixin. If it exists,
+    // it means element has custom update logic,
+    // does not want to generate the template
+    // each time.
+    if (this.modelChangedCallback) {
+      this.modelChangedCallback(firstTime);
     }
   }
 });

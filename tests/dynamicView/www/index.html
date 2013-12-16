@@ -4,11 +4,13 @@
         <script data-main="app" src="lib/alameda.js"></script>
     </head>
     <body>
-<h1>THIS TEST DOES NOT WORK YET</h1>
-<p>Do not look at the code, it is not even in a working state,
-    or even near complete.</p>
+<h1>Dynamic model/view example</h1>
+
+<p>Click on an account name to to see more data about that account. Proof of concept for model-bound custom elements that use mustache.js to generate the view from that model.</p>
 
     <template id="body">
         <account-list url="accounts.json"></account-list>
+
+        <account-view></account-view>
     </template></body>
 </html>
