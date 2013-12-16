@@ -14,10 +14,11 @@ Custom elements as seen through a module system.
     * [Avoiding FOUC](#avoiding-fouc)
     * [template.ready()](#template-ready)
     * [hrefid, srcid](#hrefid-srcid)
-    * [Selector wiring](#selector-wiring)
-    * [Example selectors](#example-selectors)
-        * [data-prop](#data-prop)
-        * [data-event](#data-event)
+    * [`templateInsertedCallback`](#templateInsertedCallback)
+* [Example mixins](#example-mixins)
+    * [data-prop](#data-prop)
+    * [data-event](#data-event)
+    * [model](#model)
 * [How is element.js constructed](#how-is-elementjs-constructed)
 * [How is template.js constructed](#how-is-templatejs-constructed)
 * [Installation](#installation)
@@ -67,7 +68,7 @@ Maybe not all HTML cases in the future will be able to use modules, and that som
 
 Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/) provide extras on top of the base capabilities being specified. While those things may be nice, and some are to feel out what might need to be standardized later, it gets hard to figure out what is custom and what is not, or to only take the custom parts that an app may use.
 
-The goal of this modular plugin approach was to provide a small base to provide basic template, ID-to-path conversion, selector wiring and document.registration management, then encourage support for additional features as separate modules that can be mixed in to an element module's prototype.
+The goal of this modular plugin approach was to provide a small base to provide basic template, ID-to-path conversion, and document.registration management, then encourage support for additional features as separate modules that can be mixed in to an element module's prototype.
 
 This results in each module for a custom element just needing to export the object properties that will be mixed in to the prototype for the element's constructor function. [Example from the tests](https://github.com/jrburke/element/blob/master/tests/basic/www/lib/basic-header/main.js).
 
@@ -139,8 +140,6 @@ The only exception to the "last one wins" is if the property name ends in "Callb
 
 The Callback multiplexing also gives a convention for mixins that want to allow multiple function calls for custom element changes that should be done all in the same turn. This is in contrast to triggering custom events, which can complete asynchronously. Events should be favored if notification of a state change can happen async. This is not necessarily true for some things like the lifecycle callbacks.
 
-This mixin behavior is particularly useful for mixing in [selector wiring](#selector-wiring) behaviors when using the `template` loader plugin.
-
 ### Attribute Wiring
 
 `element` takes any attributes that were specified on the custom tag and sets those values using JS-equivalent names to the attribute names, to communicate the outside API values to the plugin instance.
@@ -202,32 +201,17 @@ Once custom elements are installable via a package manager, knowing the actual p
 
 The `template` loader plugin will convert that to a path then replace `srcid` with `src` before inserting the template in the DOM. The same thing happens with `hrefid` to `href`.
 
-### Selector wiring
+### `templateInsertedCallback`
 
-The `template` loader plugin looks for special properties on the custom element prototype when constructing new instances, and will run node.querySelectorAll() queries based on those property names.
+The `template` loader plugin will call `templateInsertedCallback` if it is defined on the custom element, after the template has been inserted as the child of the custom element. This callback hook is **not** part of the standard document.register() [lifecycle events](#element-lifecycle-background), it is a custom one specific to the `template` support.
 
-Combined with the [mixin capability](#mixins-for-custom-element-modules), this allows some automated wiring of behaviors to DOM nodes internal to the custom element.
+Due to the [*Callback mixin capability](#mixins-for-custom-element-modules) of the `element` loader plugin, it means there can be multiple mixins that can take advantage of this callback. The [data-prop](#data-prop) and [data-event](#data-event) mixins are examples.
 
-If the prototype property name starts with `selector:`, then the rest of that property name will be used as a selector for a node.querySelectorAll() call, and each node found via that call will be passed to the function value for that property name.
+## Example mixins
 
-Using the data-prop mixin as an example:
+These example mixins can be used alongside the `template` loader plugin to do some auto-wiring of some internal DOM structure to a custom element instance.
 
-```javascript
-{
-  'selector:[data-prop]': function (node) {
-    // `this` is still the custom element instance.
-    this[node.dataset.prop] = node;
-  }
-}
-```
-
-This results in an `instance.querySelectorAll('[data-prop]'))`, and each node in that result is passed to the function mentioned above.
-
-### Example selectors
-
-These example selectors can be used alongside the `template` loader plugin to do some auto-wiring of some internal DOM structure to a custom element instance.
-
-#### selectors/data-prop
+### data-prop
 
 If the template specifies `data-prop` as an attribute on a tag, then the element for that tag will be set as the value to that property on the custom element instance. For instance, with this tag in the element's template:
 
@@ -237,7 +221,7 @@ If the template specifies `data-prop` as an attribute on a tag, then the element
 
 then after the instance of the element is created, that instance can use `this.dialog` to refer to that element.
 
-Code is at [selectors/data-prop](https://raw.github.com/jrburke/element/master/selectors/data-prop.js).
+Code is at [mixins/data-prop](https://raw.github.com/jrburke/element/master/mixins/data-prop.js).
 
 Example usage:
 
@@ -245,7 +229,7 @@ Example usage:
 // A custom element that mixes in data-prop:
 define(function(require) {
   return [
-    require('selectors/data-prop'),
+    require('mixins/data-prop'),
 
     // Main custom element implementation here
     {
@@ -261,7 +245,7 @@ define(function(require) {
 });
 ```
 
-#### selectors/data-event
+### data-event
 
 You can wire up event handlers by using a `data-event` attribute on a tag in the template. The general format is:
 
@@ -282,7 +266,7 @@ node.addEventListener('click', this.dialogClick.bind(this));
 node.addEventListener('click', this.dialogMouseOver.bind(this));
 ```
 
-Code is at [selectors/data-event](https://raw.github.com/jrburke/element/master/selectors/data-event.js).
+Code is at [mixins/data-event](https://raw.github.com/jrburke/element/master/mixins/data-event.js).
 
 Example usage:
 
@@ -290,7 +274,7 @@ Example usage:
 // A custom element that mixes in data-event:
 define(function(require) {
   return [
-    require('selectors/data-event'),
+    require('mixins/data-event'),
 
     // Main custom element implementation here
     {
@@ -302,6 +286,41 @@ define(function(require) {
       // be called if that element was
       // clicked.
       onDialogClick: function (evt) {}
+      ...
+    }
+  ];
+});
+```
+
+### model
+
+The `model` mixin will add a getter and setter for a `model` property on the custom element. It will store the model value at `this._model`, and it triggers a `this.modelChangedCallback` when the model changes.
+
+If the custom element defines a `template` method, then on the first set of the `model` property, the setter for `model` will call the `template` method and set the inner contents of the element to that template return value, and trigger a call to `templateInsertedCallback`. It will thne call `modelChangedCallback` if it is defined on the custom element.
+
+If the model is set again later, then if the custom element defines a `modelChangedCallback` method, then it will be called instead of regenerating the template contents.
+
+Code is at [mixins/model](https://raw.github.com/jrburke/element/master/mixins/model.js).
+
+Example usage:
+
+```javascript
+// A custom element that mixes in model:
+define(function(require) {
+  return [
+    require('mixins/model'),
+
+    // Main custom element implementation here
+    {
+      // Called if the model changes. Not required
+      // to be implemented. If not and the model
+      // changes, then the template for the element
+      // will be regenerated each time, if the
+      // custom element has a template method.
+      modelChangedCallback: function (firstTime) {
+        // firstTime will be true if this is the first
+        // time the model has been set.
+      },
       ...
     }
   ];
@@ -387,9 +406,6 @@ Given the disconnected require calls done for custom elements found in templates
 I expect circular dependencies in elements will be extremely rare. However, if they show up, you just need to explicitly state the dependency as a `require('element!dependency-tag')` dependency in the module, and that should allow for cycle resolution.
 
 ## TODO
-
-* Document templateInsertedCallback
-* update example for templateInsertedCallback
 
 * Show how two way data binding could be added via a selector mixin.
 * Show an example that consumes original childNodes.
