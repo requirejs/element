@@ -14,7 +14,7 @@ define({
       // Clear out old template. On first call,
       // createdCallback should have consumed
       // any children set from outside.
-      if (!firstTime){
+      if (!firstTime) {
         this.innerHTML = '';
       }
 
