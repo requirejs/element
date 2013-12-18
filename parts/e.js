@@ -32,13 +32,17 @@ define(function() {
    * @param  {String} attrValue The attribute value.
    */
   function setPropFromAttr(instance, attrName, attrValue) {
-    var propName = makePropName(attrName);
+    var proto = Object.getPrototypeOf(instance),
+        propName = makePropName(attrName),
+        descriptor = Object.getOwnPropertyDescriptor(proto, propName);
 
-    // Purposely using this instead of getOwnPropertyDescriptor
-    // since the methos is likely on the object prototype. This
-    // means it could be hazardous to use attribute IDs that
-    // conflict with JS object properties.
-    if (propName in instance) {
+    // Only check immediate prototype for a property that
+    // matches, to avoid calling base setters that may be
+    // on original HTML-based element that could cause
+    // bad effects. Needs more testing for those cases to
+    // confirm, but since element is a mixin approach, this
+    // approach is safe.
+    if (descriptor && descriptor.set) {
       instance[propName] = attrValue;
     }
   }
