@@ -171,7 +171,7 @@ define(function() {
             setPropFromAttr(this, name, newValue);
         }, 'unshift');
 
-        onload(document.register(id, {
+        onload(register(id, {
           prototype: proto
         }));
       });
