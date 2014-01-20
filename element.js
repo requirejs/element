@@ -104,6 +104,43 @@ define(function() {
     });
   }
 
+  var registry = {},
+      createElement = document.createElement.bind(document);
+
+  function register(name, options) {
+    if (registry.hasOwnProperty(name)) {
+      return;
+    }
+
+    // Create constructor
+    var ctor = function(tagName) {
+      var element = createElement(tagName);
+
+      element.__proto__ = ctor.prototype;
+
+      if (element.createdCallback) {
+        element.createdCallback();
+      }
+
+      return element;
+    };
+
+    ctor.prototype = options.prototype;
+    registry[name] = ctor;
+
+    return ctor;
+  }
+
+  document.createElement = function (tagName) {
+console.log('document.createElement is: ' + tagName);
+    var ctor = registry[tagName];
+    if (ctor) {
+      return new ctor(tagName);
+    } else {
+      return createElement(tagName);
+    }
+  };
+
   /**
    * Main module export. These methods are visible to
    * any module.

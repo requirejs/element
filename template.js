@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*globals define, requirejs, CustomElements, Platform */
+/*globals define, requirejs */
 
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
@@ -23,8 +23,10 @@ define(function(require, exports, module) {
     depPrefix = moduleConfig.depPrefix;
   }
 
-  if (typeof CustomElements !== 'undefined') {
+  if (typeof document !== 'undefined') {
     templateDiv = document.createElement('div');
+
+console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
   }
 
   /**
@@ -41,8 +43,9 @@ define(function(require, exports, module) {
     var bodyTemplate = document.querySelector('template#body');
 
     if (bodyTemplate) {
+      var fn = template.makeTemplateFn(bodyTemplate.innerHTML);
       bodyTemplate.parentNode.removeChild(bodyTemplate);
-      document.body.appendChild(bodyTemplate.content);
+      document.body.innerHTML = bodyTemplate.innerHTML;
     }
 
     readyQueue.forEach(function (fn) {
@@ -142,16 +145,6 @@ define(function(require, exports, module) {
     makeFullId: makeFullId,
 
     /**
-     * Makes a <template> element from a string of HTML.
-     * @param  {String} text
-     * @return {HTMLTemplateElement}
-     */
-    makeTemplateNode: function (text) {
-      templateDiv.innerHTML = '<template>' + text + '</template>';
-       return templateDiv.removeChild(templateDiv.firstElementChild);
-    },
-
-    /**
      * Makes a template function for use as the template object
      * used in a fully realized custom element.
      * @param  {String} text string of HTML
@@ -159,8 +152,15 @@ define(function(require, exports, module) {
      * clone of the DocumentFragment from template.
      */
     makeTemplateFn: function (text) {
-      var templateNode = template.makeTemplateNode(text);
-      return function() { return templateNode.content.cloneNode(true); };
+      return function() {
+        var e,
+            frag = document.createDocumentFragment();
+        templateDiv.innerHTML = text;
+        while ((e = templateDiv.firstChild)) {
+          frag.appendChild(e);
+        }
+        return frag;
+      };
     },
 
     /**
@@ -338,7 +338,7 @@ define(function(require, exports, module) {
     }
   };
 
-  if (typeof CustomElements !== 'undefined') {
+  if (typeof document !== 'undefined') {
     // This section wires up processing of the initial document DOM.
     // In a real document.register browser, this would not be possible
     // to do, as document.register would grab all the tags before this
@@ -354,50 +354,25 @@ define(function(require, exports, module) {
       // Collect all the tags already in the DOM
       var converted = template.textToTemplate(document.body.innerHTML);
 
-      require(converted.deps, function() {
-        // START TAKEN FROM Polymer CustomElements/src/boot.js
-        // parse document
-        CustomElements.parser.parse(document);
-        // one more pass before register is 'live'
-        CustomElements.upgradeDocument(document);
-        // choose async
-        var async = window.Platform && Platform.endOfMicrotask ?
-        Platform.endOfMicrotask :
-        setTimeout;
-        async(function() {
-          // set internal 'ready' flag, now document.register will trigger
-          // synchronous upgrades
-          CustomElements.ready = true;
-          // capture blunt profiling data
-          CustomElements.readyTime = Date.now();
-          //if (window.HTMLImports) {
-          //  CustomElements.elapsed = CustomElements.readyTime - HTMLImports.readyTime;
-          //}
-          // notify the system that we are bootstrapped
-          //document.body.dispatchEvent(
-          //  new CustomEvent('WebComponentsReady', {bubbles: true})
-          //);
-        // END TAKEN FROM Polymer CustomElements/src/boot.js
-
-          onReady();
-        });
-      });
+      require(converted.deps, onReady);
     };
-    if (typeof CustomElements !== 'undefined') {
-      if (document.readyState === 'complete') {
-        onDom();
-      } else {
-        window.addEventListener('DOMContentLoaded', onDom);
 
-        // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
-        // elements. So, going old school.
-        var pollId = setInterval(function () {
-          if (document.readyState === 'complete') {
-            clearInterval(pollId);
-            onDom();
-          }
-        }, 10);
-      }
+
+    if (document.readyState === 'complete') {
+      onDom();
+    } else {
+      window.addEventListener('DOMContentLoaded', onDom);
+
+      /*
+      // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
+      // elements. So, going old school.
+      var pollId = setInterval(function () {
+        if (document.readyState === 'complete') {
+          clearInterval(pollId);
+          onDom();
+        }
+      }, 10);
+      */
     }
   }
 
