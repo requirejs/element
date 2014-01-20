@@ -1,10 +1,6 @@
 /*jshint browser: true */
 /*globals define */
 
-/*
-CustomElement code near the bottom of this file is
-from polymer-v0.0.20131107
-*/
 define(function() {
   var slice = Array.prototype.slice,
       callbackSuffix = 'Callback',
@@ -109,6 +105,10 @@ define(function() {
    * any module.
    */
   var element = {
+    // Temporary indicator that real document.register is not in play
+    // yet, and other code may need to handle lifecycle event calling.
+    _fake: typeof document === 'undefined' || !document.register,
+
     /**
      * The AMD loader plugin API. Called by an AMD loader
      * to handle 'element!' resources.
@@ -166,14 +166,40 @@ define(function() {
         // the listener set.
         mixFnProp(proto, 'attributeChangedCallback',
         function attrChanged(name, oldValue, newValue) {
-            // Only called if value has changed, so no need to check
-            // oldValue !== newValue
-            setPropFromAttr(this, name, newValue);
+          // Only called if value has changed, so no need to check
+          // oldValue !== newValue
+          setPropFromAttr(this, name, newValue);
         }, 'unshift');
 
-        onload(document.register(id, {
-          prototype: proto
-        }));
+        var value;
+        if (element._fake) {
+          value = function ctor() {
+            if (this.createdCallback) {
+              this.createdCallback();
+            }
+          };
+          value._fake = true;
+          value.prototype = proto;
+        } else {
+          // Hack to allow code that depends on the fake contstructor
+          // to upgrade to real document.register but still work.
+          // However, the code that depends on this.domNode should
+          // be upgraded.
+          var oldCreated = proto.createdCallback;
+          proto.createdCallback = function () {
+            this.domNode = this;
+            if (oldCreated) {
+              return oldCreated.call(this);
+            }
+          };
+
+          // Real registration
+          document.register(id, {
+            prototype: proto
+          });
+        }
+
+        onload(value);
       });
     }
   };
