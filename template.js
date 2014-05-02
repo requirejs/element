@@ -1,3 +1,8 @@
+/**
+ * template 0.0.0-native-register Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/element for details
+ */
 /*jshint browser: true */
 /*globals define, requirejs */
 
@@ -361,21 +366,11 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
     };
 
 
-    if (document.readyState === 'complete') {
+    if (document.readyState === 'interactive' ||
+        document.readyState === 'complete') {
       onDom();
     } else {
       window.addEventListener('DOMContentLoaded', onDom);
-
-      /*
-      // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
-      // elements. So, going old school.
-      var pollId = setInterval(function() {
-        if (document.readyState === 'complete') {
-          clearInterval(pollId);
-          onDom();
-        }
-      }, 10);
-      */
     }
   }
 

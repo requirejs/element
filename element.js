@@ -1,10 +1,11 @@
+/**
+ * element 0.0.0-native-register Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/element for details
+ */
 /*jshint browser: true */
 /*globals define */
 
-/*
-CustomElement code near the bottom of this file is
-from polymer-v0.0.20131107
-*/
 define(function() {
   var slice = Array.prototype.slice,
       callbackSuffix = 'Callback',
@@ -104,51 +105,11 @@ define(function() {
     });
   }
 
-  var registry = {},
-      createElement = document.createElement.bind(document);
-
-  function upgrade(node, ctor) {
-    node.__proto__ = ctor.prototype;
-
-    if (node.createdCallback) {
-      node.createdCallback();
-    }
-  }
-
-  function register(name, options) {
-    if (registry.hasOwnProperty(name)) {
-      return;
-    }
-
-    // Create constructor
-    var ctor = function(tagName) {
-      var element = createElement(tagName);
-      upgrade(element, ctor);
-      return element;
-    };
-
-    ctor.prototype = options.prototype;
-    registry[name] = ctor;
-
-    return ctor;
-  }
-
-  document.createElement = function(tagName) {
-    var ctor = registry[tagName];
-    if (ctor) {
-      return new ctor(tagName);
-    } else {
-      return createElement(tagName);
-    }
-  };
-
   /**
    * Main module export. These methods are visible to
    * any module.
    */
   var element = {
-    upgrade: upgrade,
-
     /**
      * The AMD loader plugin API. Called by an AMD loader
      * to handle 'element!' resources.
@@ -211,7 +172,7 @@ define(function() {
             setPropFromAttr(this, name, newValue);
         }, 'unshift');
 
-        onload(register(id, {
+        onload(document.registerElement(id, {
           prototype: proto
         }));
       });
