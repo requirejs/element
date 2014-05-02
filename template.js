@@ -48,7 +48,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
       document.body.innerHTML = bodyTemplate.innerHTML;
     }
 
-    readyQueue.forEach(function (fn) {
+    readyQueue.forEach(function(fn) {
       fn();
     });
     readyQueue = [];
@@ -95,7 +95,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
 
   if (typeof XMLHttpRequest !== 'undefined') {
     // browser loading
-    fetchText = function (url, onload, onerror) {
+    fetchText = function(url, onload, onerror) {
       var xhr = new XMLHttpRequest();
 
       xhr.open('GET', url, true);
@@ -121,7 +121,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
     // Likely a build scenario. Cheat a bit and use
     // an r.js helper. This could be modified to support
     // more AMD loader tools though in the future.
-    fetchText = function (url, onload) {
+    fetchText = function(url, onload) {
       onload(requirejs._readFile(url));
     };
   }
@@ -134,7 +134,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * tracing and registration has finished.
      * @param  {Function} fn
      */
-    ready: function (fn) {
+    ready: function(fn) {
       if (isReady) {
         setTimeout(fn);
       } else {
@@ -151,7 +151,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * @return {Function} by calling this function, creates a
      * clone of the DocumentFragment from template.
      */
-    makeTemplateFn: function (text) {
+    makeTemplateFn: function(text) {
       return function() {
         var e,
             frag = document.createDocumentFragment();
@@ -172,9 +172,9 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * HTML string given as input.
      * @return {String} converted HTML string.
      */
-    idsToUrls: function (text, refId) {
+    idsToUrls: function(text, refId) {
       text = text
-              .replace(attrIdRegExp, function (match, type, id) {
+              .replace(attrIdRegExp, function(match, type, id) {
                 id = makeFullId(id, refId);
                 var attr = type === 'hrefid' ? 'href' : 'src';
 
@@ -192,7 +192,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * @return {Array} array of dependencies. Could be zero
      * length if no dependencies found.
      */
-    depsFromText: function (text) {
+    depsFromText: function(text) {
       var match, noCommentText,
           deps = [];
 
@@ -249,7 +249,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * @return {Function}   a function to call to get a
      * DOM object for insertion into the document.
      */
-    objToFn: function (obj) {
+    objToFn: function(obj) {
       var text = template.idsToUrls(obj.text, obj.id);
       return template.makeTemplateFn(text);
     },
@@ -265,7 +265,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * @param  {Object} config config object, normally just has
      * config.isBuild to indicate build scenario.
      */
-    load: function (id, req, onload, config) {
+    load: function(id, req, onload, config) {
       var isBuild = config.isBuild;
 
       // If a build directive, load those files and scan
@@ -275,7 +275,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
 
         var idList = id.split(','),
             count = 0,
-            buildIdDone = function () {
+            buildIdDone = function() {
               count += 1;
               if (count === idList.length) {
                 onload();
@@ -286,18 +286,19 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
         buildIdDone.__requireJsBuild = true;
 
         // Allow for multiple files separated by commas
-        id.split(',').forEach(function (moduleId) {
+        id.split(',').forEach(function(moduleId) {
           var path = req.toUrl(moduleId);
 
           // Leverage r.js optimizer special method for reading
           // files synchronously.
-          require(template.depsFromText(requirejs._readFile(path)), buildIdDone);
+          require(template.depsFromText(requirejs._readFile(path)),
+                  buildIdDone);
         });
       } else {
-        fetchText(req.toUrl(id), function (text) {
+        fetchText(req.toUrl(id), function(text) {
           var templateObj = template.textToTemplate(text, id, isBuild);
 
-          req(templateObj.deps, function () {
+          req(templateObj.deps, function() {
             if (isBuild) {
               buildMap[id] = templateObj;
             }
@@ -319,21 +320,23 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
      * @param  {String} id         resource ID handled by plugin.
      * @param  {Function} write      Used to write output to build file.
      */
-    write: function (pluginName, id, write) {
+    write: function(pluginName, id, write) {
       if (buildMap.hasOwnProperty(id)) {
         var obj = buildMap[id],
             depString = JSON.stringify(obj.deps);
 
-        depString = depString.replace(/^\s*\[/, '').replace(/\]\s*$/, '').trim();
+        depString = depString.replace(/^\s*\[/, '').replace(/\]\s*$/, '')
+                             .trim();
         if (depString) {
           depString = ', ' + depString;
         }
 
         write.asModule(pluginName + '!' + id,
-          "define(['" + module.id + "'" + depString + "], function (template) { return {\n" +
-          "createdCallback: template.templateCreatedCallback,\n" +
-          "template: template.objToFn(" + JSON.stringify(buildMap[id]) +
-          ")}; });\n");
+          'define([\'' + module.id + '\'' + depString +
+          '], function(template) { return {\n' +
+          'createdCallback: template.templateCreatedCallback,\n' +
+          'template: template.objToFn(' + JSON.stringify(buildMap[id]) +
+          ')}; });\n');
       }
     }
   };
@@ -345,7 +348,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
     // would likely run. Also, onDomDone just a hack related to
     // DOMContentLoaded not firing.
     var onDom, onDomDone = false;
-    onDom = function () {
+    onDom = function() {
       if (onDomDone) {
         return;
       }
@@ -366,7 +369,7 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
       /*
       // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
       // elements. So, going old school.
-      var pollId = setInterval(function () {
+      var pollId = setInterval(function() {
         if (document.readyState === 'complete') {
           clearInterval(pollId);
           onDom();

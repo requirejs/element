@@ -48,7 +48,7 @@ define(function() {
   }
 
   function makePropFn(prop) {
-    return function () {
+    return function() {
       var i, ret,
           args = slice.call(arguments),
           fns = this._element.props[prop];
@@ -78,13 +78,13 @@ define(function() {
 
   function mix(proto, mixin) {
     if (Array.isArray(mixin)) {
-      mixin.forEach(function (mixin) {
+      mixin.forEach(function(mixin) {
         mix(proto, mixin);
       });
       return;
     }
 
-    Object.keys(mixin).forEach(function (key) {
+    Object.keys(mixin).forEach(function(key) {
       var suffixIndex,
           descriptor = Object.getOwnPropertyDescriptor(mixin, key);
 
@@ -107,6 +107,14 @@ define(function() {
   var registry = {},
       createElement = document.createElement.bind(document);
 
+  function upgrade(node, ctor) {
+    node.__proto__ = ctor.prototype;
+
+    if (node.createdCallback) {
+      node.createdCallback();
+    }
+  }
+
   function register(name, options) {
     if (registry.hasOwnProperty(name)) {
       return;
@@ -115,13 +123,7 @@ define(function() {
     // Create constructor
     var ctor = function(tagName) {
       var element = createElement(tagName);
-
-      element.__proto__ = ctor.prototype;
-
-      if (element.createdCallback) {
-        element.createdCallback();
-      }
-
+      upgrade(element, ctor);
       return element;
     };
 
@@ -131,8 +133,7 @@ define(function() {
     return ctor;
   }
 
-  document.createElement = function (tagName) {
-console.log('document.createElement is: ' + tagName);
+  document.createElement = function(tagName) {
     var ctor = registry[tagName];
     if (ctor) {
       return new ctor(tagName);
@@ -146,6 +147,8 @@ console.log('document.createElement is: ' + tagName);
    * any module.
    */
   var element = {
+    upgrade: upgrade,
+
     /**
      * The AMD loader plugin API. Called by an AMD loader
      * to handle 'element!' resources.
@@ -155,9 +158,9 @@ console.log('document.createElement is: ' + tagName);
      * @param  {Object} config config from the loader. Normally just has
      * config.isBuild if in a build scenario.
      */
-    load: function (id, req, onload, config) {
+    load: function(id, req, onload, config) {
       // Normal dependency request.
-      req([id], function (mod) {
+      req([id], function(mod) {
         // For builds do nothing else. Also if no module export or
         // it is a function because the module already called
         // document.register itself, then do not bother with the
