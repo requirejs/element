@@ -1,15 +1,17 @@
 /**
- * element 0.0.0-native-register Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
+ * element 0.0.0-native-register
+ * Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/element for details
  */
 /*jshint browser: true */
 /*globals define */
-
 define(function() {
+  'use strict';
   var slice = Array.prototype.slice,
       callbackSuffix = 'Callback',
-      callbackSuffixLength = callbackSuffix.length;
+      callbackSuffixLength = callbackSuffix.length,
+      charRegExp = /[^a-z]/g;
 
   /**
    * Converts an attribute like a-long-attr to aLongAttr
@@ -78,6 +80,8 @@ define(function() {
   }
 
   function mix(proto, mixin) {
+    // Allow a top level of a mixin to be an array of other
+    // mixins.
     if (Array.isArray(mixin)) {
       mixin.forEach(function(mixin) {
         mix(proto, mixin);
@@ -89,18 +93,14 @@ define(function() {
       var suffixIndex,
           descriptor = Object.getOwnPropertyDescriptor(mixin, key);
 
-      if (Array.isArray(descriptor.value)) {
-        mix(proto, descriptor.value);
+      // Any property that ends in Callback, like the custom element
+      // lifecycle events, can be multiplexed.
+      suffixIndex = key.indexOf(callbackSuffix);
+      if (suffixIndex > 0 &&
+          suffixIndex === key.length - callbackSuffixLength) {
+        mixFnProp(proto, key, descriptor.value);
       } else {
-        // Any property that ends in Callback, like the custom element
-        // lifecycle events, can be multiplexed.
-        suffixIndex = key.indexOf(callbackSuffix);
-        if (suffixIndex > 0 &&
-            suffixIndex === key.length - callbackSuffixLength) {
-          mixFnProp(proto, key, descriptor.value);
-        } else {
-          Object.defineProperty(proto, key, descriptor);
-        }
+        Object.defineProperty(proto, key, descriptor);
       }
     });
   }
@@ -171,6 +171,10 @@ define(function() {
             // oldValue !== newValue
             setPropFromAttr(this, name, newValue);
         }, 'unshift');
+
+        // Translate any characters that are unfit for custom element
+        // names to dashes
+        id = id.toLowerCase().replace(charRegExp, '-');
 
         onload(document.registerElement(id, {
           prototype: proto

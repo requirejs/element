@@ -1,11 +1,11 @@
 /**
- * template 0.0.0-native-register Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
+ * template 0.0.0-native-register
+ * Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/element for details
  */
-/*jshint browser: true */
+/*jshint browser: true, strict: false */
 /*globals define, requirejs */
-
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
       isReady = false,
@@ -30,8 +30,6 @@ define(function(require, exports, module) {
 
   if (typeof document !== 'undefined') {
     templateDiv = document.createElement('div');
-
-console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
   }
 
   /**
@@ -48,7 +46,6 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
     var bodyTemplate = document.querySelector('template#body');
 
     if (bodyTemplate) {
-      var fn = template.makeTemplateFn(bodyTemplate.innerHTML);
       bodyTemplate.parentNode.removeChild(bodyTemplate);
       document.body.innerHTML = bodyTemplate.innerHTML;
     }
@@ -85,7 +82,6 @@ console.log('TEMPLATE DIV: ' + templateDiv.ownerDocument.createElement);
 
   function templateCreatedCallback() {
       var node = this.template();
-
       if (node) {
         // Clear out previous contents. If they were needed, they
         // would have been consumed by the this.template.fn() call.

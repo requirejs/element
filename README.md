@@ -19,8 +19,6 @@ Custom elements as seen through a module system.
     * [data-prop](#data-prop)
     * [data-event](#data-event)
     * [model](#model)
-* [How is element.js constructed](#how-is-elementjs-constructed)
-* [How is template.js constructed](#how-is-templatejs-constructed)
 * [Installation](#installation)
 * [Usage](#usage)
 * [Notes](#notes)
@@ -34,11 +32,9 @@ This project uses AMD as the module system, but as the ES module system will hav
 
 This is an AMD loader plugin that implements loading of a custom element module via `element!custom-element-name`. There is a `template` plugin too, that handles scanning HTML snippets for custom elements and loading them as dependencies.
 
-The element.js file uses Polymer's `document.register` polyfill, and it relies on browsers that have implemented the `template` element. So, right now it likely only works in Firefox and Chrome.
+The element.js assumes `document.registerElement` and the `template` element are implemented in the browser. Right now it likely only works in Firefox and Chrome. For Firefox, you may need to set `dom.webcomponents.enabled` to `true` in about:config for it to work.
 
-As `document.register` is implemented in browsers, this loader plugin will shrink dramatically, to a size that is smaller than the [e.js portion](https://github.com/jrburke/element/blob/master/parts/e.js) of this plugin.
-
-So the hope is to just use the `template` element and `document.register` pieces of the Web Compnents stack in this plugin. Over time, each custom element could use scoped style elements and the Shadow DOM as they become available in browsers.
+So the hope is to just use the `template` element and `document.registerElement` pieces of the Web Components stack in this plugin. Over time, each custom element could use scoped style elements and the Shadow DOM as they become available in browsers.
 
 However, HTML Imports should not be needed with this modular approach, and because module loading in the browser is async, the assumption is that rendering will be always be completed async.
 
@@ -76,7 +72,7 @@ This loader plugin also avoids eval-related issues with [CSP](https://developer.
 
 ## Element lifecycle background
 
-By default, custom elements registered via `document.register` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#dfn-definition-construction-algorithm):
+By default, custom elements registered via `document.registerElement` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#dfn-definition-construction-algorithm):
 
 * **createdCallback**: Called when an instance is created.
 * **enteredViewCallback**: Called when the element is inserted into document.
@@ -92,15 +88,15 @@ The `template` loader plugin hooks into `createdCallback` to do the template wir
 The `element` and `template` loader plugins uses these standard web components features:
 
 * [template element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
-* [document.register](http://w3c.github.io/webcomponents/spec/custom/#dfn-document-register)
+* [document.registerElement](http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-register)
 
-but uses a loader plugin to handle document.register, and uses modules for creating the custom element prototypes that is passed to document.register. The `template` plugin creates HTML snippets, via the template element, for the interior DOM structure of an element.
+but uses a loader plugin to handle document.registerElement, and uses modules for creating the custom element prototypes that is passed to document.registerElement. The `template` plugin creates HTML snippets, via the template element, for the interior DOM structure of an element.
 
 ## `element` loader plugin custom features
 
 The `element` loader plugin provides these services:
 
-* Takes a mixin of properties, and converts that to an object prototype and calls `document.register` using the module ID referenced in the `element!` dependency reference.
+* Takes a mixin of properties, and converts that to an object prototype and calls `document.registerElement` using the module ID referenced in the `element!` dependency reference.
 * Multiplexes [lifecycle events]() mentioned by the mixins.
 * Automatically wires up any attribute value that is set to setting that value on an instance's associated property.
 
@@ -207,7 +203,7 @@ The `template` loader plugin will convert that to a path then replace `srcid` wi
 
 ### `templateInsertedCallback`
 
-The `template` loader plugin will call `templateInsertedCallback` if it is defined on the custom element, after the template has been inserted as the child of the custom element. This callback hook is **not** part of the standard document.register() [lifecycle events](#element-lifecycle-background), it is a custom one specific to the `template` support.
+The `template` loader plugin will call `templateInsertedCallback` if it is defined on the custom element, after the template has been inserted as the child of the custom element. This callback hook is **not** part of the standard document.registerElement() [lifecycle events](#element-lifecycle-background), it is a custom one specific to the `template` support.
 
 Due to the [*Callback mixin capability](#mixins-for-custom-element-modules) of the `element` loader plugin, it means there can be multiple mixins that can take advantage of this callback. The [data-prop](#data-prop) and [data-event](#data-event) mixins are examples.
 
@@ -332,20 +328,6 @@ define(function(require) {
 });
 ```
 
-## How is element.js constructed
-
-Just a concat of the files in the **parts** directory.
-
-[e.js](https://github.com/jrburke/element/blob/master/parts/e.js) is the only new code for the plugin, the rest comes from Polymer's Custom Element shim.
-
-As `document.register` is implemented by browsers, this plugin should shrink to just being the contents in e.js.
-
-## How is template.js constructed
-
-[template.js](https://github.com/jrburke/element/blob/master/template.js) is just a regular AMD loader plugin that returns an object structure that plays well with `element` mixins. It depends on `element` for the document.register shim and for the Custom Elements bootstrapping done on document load, to set up template.ready().
-
-As `document.register` is implemented by browsers, this plugin will shrink a little bit, and the template.ready approach may change.
-
 ## Installation
 
 They are still under development, so grab them from this repo in raw form:
@@ -412,6 +394,8 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## TODO
 
+May be a bug for Firefox, seems to create some half-formed custom element where the "this" does not have the full set of prototype properties yet for the up-front body.innerHTML scanning and loading/wiring of a component in template.js? Manifests as a "this._element is undefined" error in basic test.
+
 * Show how two way data binding could be added via a selector mixin.
 * Show an example that consumes original childNodes.
 * shadowDom use?
@@ -420,7 +404,7 @@ I expect circular dependencies in elements will be extremely rare. However, if t
 
 ## Spec questions
 
-* If document.register in browser, when parsing HTML, need to wait for async load of things before starting. A "delay parsing" api, that then is called later to continue? Would allow for img/ Using template tag, but requires special knowledge.
+* If document.registerElement in browser, when parsing HTML, need to wait for async load of things before starting. A "delay parsing" api, that then is called later to continue? Would allow for img/ Using template tag, but requires special knowledge.
 
 * :unresolved matches selectors that have not been upgraded, for FOUC handling, but also, could poll until no others for load event?
 
