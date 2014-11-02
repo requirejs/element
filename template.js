@@ -1,6 +1,11 @@
-/*jshint browser: true */
-/*globals define, requirejs, CustomElements, Platform */
-
+/**
+ * template 0.0.0-native-register
+ * Copyright (c) 2013-2014, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/element for details
+ */
+/*jshint browser: true, strict: false */
+/*globals define, requirejs */
 define(function(require, exports, module) {
   var template, fetchText, templateDiv,
       isReady = false,
@@ -23,7 +28,7 @@ define(function(require, exports, module) {
     depPrefix = moduleConfig.depPrefix;
   }
 
-  if (typeof CustomElements !== 'undefined') {
+  if (typeof document !== 'undefined') {
     templateDiv = document.createElement('div');
   }
 
@@ -42,10 +47,10 @@ define(function(require, exports, module) {
 
     if (bodyTemplate) {
       bodyTemplate.parentNode.removeChild(bodyTemplate);
-      document.body.appendChild(bodyTemplate.content);
+      document.body.innerHTML = bodyTemplate.innerHTML;
     }
 
-    readyQueue.forEach(function (fn) {
+    readyQueue.forEach(function(fn) {
       fn();
     });
     readyQueue = [];
@@ -75,15 +80,20 @@ define(function(require, exports, module) {
     return id;
   }
 
+  /**
+   * Supports cached internal nodes if data-cached is set to a truthy
+   * value.
+   */
   function templateCreatedCallback() {
-      var node = this.template();
+      if (this.dataset.cached === 'cached' || this.template) {
+        if (this.dataset.cached !== 'cached' && this.template) {
+          // Clear out previous contents. If they were needed, they
+          // would have been consumed by the this.template.fn() call.
+          this.innerHTML = '';
 
-      if (node) {
-        // Clear out previous contents. If they were needed, they
-        // would have been consumed by the this.template.fn() call.
-        this.innerHTML = '';
+          this.appendChild(this.template());
+        }
 
-        this.appendChild(node);
         if (this.templateInsertedCallback) {
           this.templateInsertedCallback();
         }
@@ -92,7 +102,7 @@ define(function(require, exports, module) {
 
   if (typeof XMLHttpRequest !== 'undefined') {
     // browser loading
-    fetchText = function (url, onload, onerror) {
+    fetchText = function(url, onload, onerror) {
       var xhr = new XMLHttpRequest();
 
       xhr.open('GET', url, true);
@@ -118,7 +128,7 @@ define(function(require, exports, module) {
     // Likely a build scenario. Cheat a bit and use
     // an r.js helper. This could be modified to support
     // more AMD loader tools though in the future.
-    fetchText = function (url, onload) {
+    fetchText = function(url, onload) {
       onload(requirejs._readFile(url));
     };
   }
@@ -131,7 +141,7 @@ define(function(require, exports, module) {
      * tracing and registration has finished.
      * @param  {Function} fn
      */
-    ready: function (fn) {
+    ready: function(fn) {
       if (isReady) {
         setTimeout(fn);
       } else {
@@ -142,25 +152,32 @@ define(function(require, exports, module) {
     makeFullId: makeFullId,
 
     /**
-     * Makes a <template> element from a string of HTML.
-     * @param  {String} text
-     * @return {HTMLTemplateElement}
-     */
-    makeTemplateNode: function (text) {
-      templateDiv.innerHTML = '<template>' + text + '</template>';
-       return templateDiv.removeChild(templateDiv.firstElementChild);
-    },
-
-    /**
      * Makes a template function for use as the template object
      * used in a fully realized custom element.
      * @param  {String} text string of HTML
      * @return {Function} by calling this function, creates a
      * clone of the DocumentFragment from template.
      */
-    makeTemplateFn: function (text) {
-      var templateNode = template.makeTemplateNode(text);
-      return function() { return templateNode.content.cloneNode(true); };
+    makeTemplateFn: function(text) {
+      return function() {
+        var e,
+            frag = document.createDocumentFragment();
+
+        // For the security conscious: the contents of `text` comes from the
+        // require('template!...') calls that exercises this module's
+        // functionality as a loader plugin to load UI fragments from .html
+        // files via XHR calls to paths the application can reach, or from a \
+        // built resource that was constructed from a similar XHR-type call, but
+        // done at application build time. This means that dynamic calls to
+        // require('template!...') are the source of risk for injection of
+        // hostile HTML.
+        templateDiv.innerHTML = text;
+
+        while ((e = templateDiv.firstChild)) {
+          frag.appendChild(e);
+        }
+        return frag;
+      };
     },
 
     /**
@@ -172,9 +189,9 @@ define(function(require, exports, module) {
      * HTML string given as input.
      * @return {String} converted HTML string.
      */
-    idsToUrls: function (text, refId) {
+    idsToUrls: function(text, refId) {
       text = text
-              .replace(attrIdRegExp, function (match, type, id) {
+              .replace(attrIdRegExp, function(match, type, id) {
                 id = makeFullId(id, refId);
                 var attr = type === 'hrefid' ? 'href' : 'src';
 
@@ -192,7 +209,7 @@ define(function(require, exports, module) {
      * @return {Array} array of dependencies. Could be zero
      * length if no dependencies found.
      */
-    depsFromText: function (text) {
+    depsFromText: function(text) {
       var match, noCommentText,
           deps = [];
 
@@ -249,7 +266,7 @@ define(function(require, exports, module) {
      * @return {Function}   a function to call to get a
      * DOM object for insertion into the document.
      */
-    objToFn: function (obj) {
+    objToFn: function(obj) {
       var text = template.idsToUrls(obj.text, obj.id);
       return template.makeTemplateFn(text);
     },
@@ -265,7 +282,7 @@ define(function(require, exports, module) {
      * @param  {Object} config config object, normally just has
      * config.isBuild to indicate build scenario.
      */
-    load: function (id, req, onload, config) {
+    load: function(id, req, onload, config) {
       var isBuild = config.isBuild;
 
       // If a build directive, load those files and scan
@@ -275,7 +292,7 @@ define(function(require, exports, module) {
 
         var idList = id.split(','),
             count = 0,
-            buildIdDone = function () {
+            buildIdDone = function() {
               count += 1;
               if (count === idList.length) {
                 onload();
@@ -286,18 +303,19 @@ define(function(require, exports, module) {
         buildIdDone.__requireJsBuild = true;
 
         // Allow for multiple files separated by commas
-        id.split(',').forEach(function (moduleId) {
+        id.split(',').forEach(function(moduleId) {
           var path = req.toUrl(moduleId);
 
           // Leverage r.js optimizer special method for reading
           // files synchronously.
-          require(template.depsFromText(requirejs._readFile(path)), buildIdDone);
+          require(template.depsFromText(requirejs._readFile(path)),
+                  buildIdDone);
         });
       } else {
-        fetchText(req.toUrl(id), function (text) {
+        fetchText(req.toUrl(id), function(text) {
           var templateObj = template.textToTemplate(text, id, isBuild);
 
-          req(templateObj.deps, function () {
+          req(templateObj.deps, function() {
             if (isBuild) {
               buildMap[id] = templateObj;
             }
@@ -319,33 +337,35 @@ define(function(require, exports, module) {
      * @param  {String} id         resource ID handled by plugin.
      * @param  {Function} write      Used to write output to build file.
      */
-    write: function (pluginName, id, write) {
+    write: function(pluginName, id, write) {
       if (buildMap.hasOwnProperty(id)) {
         var obj = buildMap[id],
             depString = JSON.stringify(obj.deps);
 
-        depString = depString.replace(/^\s*\[/, '').replace(/\]\s*$/, '').trim();
+        depString = depString.replace(/^\s*\[/, '').replace(/\]\s*$/, '')
+                             .trim();
         if (depString) {
           depString = ', ' + depString;
         }
 
         write.asModule(pluginName + '!' + id,
-          "define(['" + module.id + "'" + depString + "], function (template) { return {\n" +
-          "createdCallback: template.templateCreatedCallback,\n" +
-          "template: template.objToFn(" + JSON.stringify(buildMap[id]) +
-          ")}; });\n");
+          'define([\'' + module.id + '\'' + depString +
+          '], function(template) { return {\n' +
+          'createdCallback: template.templateCreatedCallback,\n' +
+          'template: template.objToFn(' + JSON.stringify(buildMap[id]) +
+          ')}; });\n');
       }
     }
   };
 
-  if (typeof CustomElements !== 'undefined') {
+  if (typeof document !== 'undefined') {
     // This section wires up processing of the initial document DOM.
     // In a real document.register browser, this would not be possible
     // to do, as document.register would grab all the tags before this
     // would likely run. Also, onDomDone just a hack related to
     // DOMContentLoaded not firing.
     var onDom, onDomDone = false;
-    onDom = function () {
+    onDom = function() {
       if (onDomDone) {
         return;
       }
@@ -354,50 +374,15 @@ define(function(require, exports, module) {
       // Collect all the tags already in the DOM
       var converted = template.textToTemplate(document.body.innerHTML);
 
-      require(converted.deps, function() {
-        // START TAKEN FROM Polymer CustomElements/src/boot.js
-        // parse document
-        CustomElements.parser.parse(document);
-        // one more pass before register is 'live'
-        CustomElements.upgradeDocument(document);
-        // choose async
-        var async = window.Platform && Platform.endOfMicrotask ?
-        Platform.endOfMicrotask :
-        setTimeout;
-        async(function() {
-          // set internal 'ready' flag, now document.register will trigger
-          // synchronous upgrades
-          CustomElements.ready = true;
-          // capture blunt profiling data
-          CustomElements.readyTime = Date.now();
-          //if (window.HTMLImports) {
-          //  CustomElements.elapsed = CustomElements.readyTime - HTMLImports.readyTime;
-          //}
-          // notify the system that we are bootstrapped
-          //document.body.dispatchEvent(
-          //  new CustomEvent('WebComponentsReady', {bubbles: true})
-          //);
-        // END TAKEN FROM Polymer CustomElements/src/boot.js
-
-          onReady();
-        });
-      });
+      require(converted.deps, onReady);
     };
-    if (typeof CustomElements !== 'undefined') {
-      if (document.readyState === 'complete') {
-        onDom();
-      } else {
-        window.addEventListener('DOMContentLoaded', onDom);
 
-        // Hmm, DOMContentLoaded not firing, maybe because of funky unknown
-        // elements. So, going old school.
-        var pollId = setInterval(function () {
-          if (document.readyState === 'complete') {
-            clearInterval(pollId);
-            onDom();
-          }
-        }, 10);
-      }
+
+    if (document.readyState === 'interactive' ||
+        document.readyState === 'complete') {
+      onDom();
+    } else {
+      window.addEventListener('DOMContentLoaded', onDom);
     }
   }
 
