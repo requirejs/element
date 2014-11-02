@@ -80,14 +80,20 @@ define(function(require, exports, module) {
     return id;
   }
 
+  /**
+   * Supports cached internal nodes if data-cached is set to a truthy
+   * value.
+   */
   function templateCreatedCallback() {
-      var node = this.template();
-      if (node) {
-        // Clear out previous contents. If they were needed, they
-        // would have been consumed by the this.template.fn() call.
-        this.innerHTML = '';
+      if (this.dataset.cached === 'cached' || this.template) {
+        if (this.dataset.cached !== 'cached' && this.template) {
+          // Clear out previous contents. If they were needed, they
+          // would have been consumed by the this.template.fn() call.
+          this.innerHTML = '';
 
-        this.appendChild(node);
+          this.appendChild(this.template());
+        }
+
         if (this.templateInsertedCallback) {
           this.templateInsertedCallback();
         }
@@ -156,7 +162,17 @@ define(function(require, exports, module) {
       return function() {
         var e,
             frag = document.createDocumentFragment();
+
+        // For the security conscious: the contents of `text` comes from the
+        // require('template!...') calls that exercises this module's
+        // functionality as a loader plugin to load UI fragments from .html
+        // files via XHR calls to paths the application can reach, or from a \
+        // built resource that was constructed from a similar XHR-type call, but
+        // done at application build time. This means that dynamic calls to
+        // require('template!...') are the source of risk for injection of
+        // hostile HTML.
         templateDiv.innerHTML = text;
+
         while ((e = templateDiv.firstChild)) {
           frag.appendChild(e);
         }

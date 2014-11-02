@@ -32,9 +32,9 @@ This project uses AMD as the module system, but as the ES module system will hav
 
 This is an AMD loader plugin that implements loading of a custom element module via `element!custom-element-name`. There is a `template` plugin too, that handles scanning HTML snippets for custom elements and loading them as dependencies.
 
-The element.js assumes `document.registerElement` and the `template` element are implemented in the browser. Right now it likely only works in Firefox and Chrome. For Firefox, you may need to set `dom.webcomponents.enabled` to `true` in about:config for it to work.
+The element.js assumes `document.registerElement` is implemented in the browser. Right now it likely only works in Firefox and Chrome. For Firefox, you may need to set `dom.webcomponents.enabled` to `true` in about:config for it to work.
 
-So the hope is to just use the `template` element and `document.registerElement` pieces of the Web Components stack in this plugin. Over time, each custom element could use scoped style elements and the Shadow DOM as they become available in browsers.
+The hope is to just use `document.registerElement` and perhaps the `template` element pieces of the Web Components stack in this plugin. Over time, each custom element could use scoped style elements and the Shadow DOM as they become available in browsers.
 
 However, HTML Imports should not be needed with this modular approach, and because module loading in the browser is async, the assumption is that rendering will be always be completed async.
 
@@ -90,7 +90,7 @@ The `element` and `template` loader plugins uses these standard web components f
 * [template element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
 * [document.registerElement](http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-register)
 
-but uses a loader plugin to handle document.registerElement, and uses modules for creating the custom element prototypes that is passed to document.registerElement. The `template` plugin creates HTML snippets, via the template element, for the interior DOM structure of an element.
+but uses a loader plugin to handle document.registerElement, and uses modules for creating the custom element prototypes that is passed to document.registerElement. The `template` plugin creates HTML snippets, via the template element, for the interior DOM structure of the body. However for the templates used inside a custom element, via `require(template!...)` just use a regular div/element container as a work area.
 
 ## `element` loader plugin custom features
 
