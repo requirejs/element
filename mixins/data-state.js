@@ -1,13 +1,18 @@
 /*
+* Only supports top level property changes. So for this.account.name,
+  only this.account is watched for changes.
 
+todo:
+* need this on first render renderState: function() {}?
 
-<div data-cstate="account.name"></div>
+* the difference between attributes and properties. So how to deal
+  with .checked? data-pstate="checked:selected" and a data-sif?
 
-<button data-aif="disabled:hackMutationHeader.isStarred"></button>
+* investigate array changes: both in data and in sub elements
+  that are bound to data items. Maybe have special tags that
+  deal with array roots.
+*/
 
-<input data-astate="value:displayName,placeholder:l10n.placeholder">
-
- */
 define(function () {
   'use strict';
   var slice = Array.prototype.slice,
@@ -53,19 +58,62 @@ define(function () {
     return hasOwn.call(obj, prop);
   }
 
-  function getStateFn(prop) {
-    return this._state[prop];
+  function getStateFn(obj, prop) {
+    return obj._state[prop];
   }
 
-  function setStateFn(prop, value) {
-    this._state[prop] = value;
-    this._statePropUpdates[prop] = true;
-    scheduleUpdate(this);
+  function setStateFn(obj, prop, value) {
+    obj._state[prop] = value;
+    obj._statePropUpdates[prop] = true;
+    scheduleUpdate(obj);
   }
 
-  function contentStateFn(node, stateParts) {
-    var value = getStateValue(this, stateParts);
+  function contentStateFn(obj, node, stateParts) {
+    var value = getStateValue(obj, stateParts);
     node.textContent = value;
+  }
+
+  function attrStateFn(obj, node, stateParts, attrName) {
+    var value = getStateValue(obj, stateParts);
+    if (value === undefined || value === null) {
+      node.removeAttribute(attrName);
+    } else {
+      node.setAttribute(attrName, value);
+    }
+  }
+
+  function aifBaseFn(node, attrName, isTrue) {
+    if (isTrue) {
+      node.setAttribute(attrName, attrName);
+    } else {
+      node.removeAttribute(attrName);
+    }
+  }
+
+  function aifYesFn(obj, node, stateParts, attrName) {
+    var value = !!getStateValue(obj, stateParts);
+    aifBaseFn(node, attrName, value);
+  }
+
+  function aifNoFn(obj, node, stateParts, attrName) {
+    var value = !getStateValue(obj, stateParts);
+    aifBaseFn(node, attrName, value);
+  }
+
+
+  function defineProp(node, prop, stateModFn) {
+    if (!hasProp(node._stateMods, prop)) {
+      node._stateMods[prop] = [];
+    }
+    node._stateMods[prop].push(stateModFn);
+
+    if (!hasProp(node, prop)) {
+      Object.defineProperty(node, prop, {
+        enumerable: true,
+        get: getStateFn.bind(undefined, node, prop),
+        set: setStateFn.bind(undefined, node, prop)
+      });
+    }
   }
 
   function bindState(node) {
@@ -74,43 +122,63 @@ define(function () {
       nodes.unshift(node);
     }
 
-console.log('NODES ARE: ' + (typeof nodes) + ', ' + nodes);
-
     nodes.forEach(function (matchNode) {
-console.log('GOT THING: ', matchNode);
+      // data-cstate wiring.
       var cstate = matchNode.dataset.cstate;
       if (cstate) {
         cstate.split(',').forEach(function(stateValue) {
           var stateParts = stateValue.split('.'),
               prop = stateParts[0];
 
-          if (!hasProp(node._stateMods, prop)) {
-            node._stateMods[prop] = [];
-          }
-          node._stateMods[prop]
-              .push(contentStateFn.bind(node, matchNode, stateParts));
-
-          if (!hasProp(node, 'hasOwnProperty')) {
-            Object.defineProperty(node, prop, {
-              enumerable: true,
-              get: getStateFn.bind(node, prop),
-              set: setStateFn.bind(node, prop)
-            });
-          }
+          defineProp(node, prop,
+            contentStateFn.bind(undefined, node, matchNode, stateParts));
         });
       }
 
+      // data-astate wiring.
+      var astate = matchNode.dataset.astate;
+      if (astate) {
+        astate.split(',').forEach(function(nameValue) {
+          var pair = nameValue.split(':'),
+              attrName = pair[0],
+              stateValue = pair[1],
+              stateParts = stateValue.split('.'),
+              prop = stateParts[0];
+
+          defineProp(node, prop,
+            attrStateFn.bind(undefined, node, matchNode, stateParts, attrName));
+
+        });
+      }
+
+      // data-aif wiring.
+      var aif = matchNode.dataset.aif;
+      if (aif) {
+        aif.split(',').forEach(function(nameValue) {
+          var pair = nameValue.split(':'),
+              attrName = pair[0],
+              stateValue = pair[1],
+              stateParts = stateValue.split('.'),
+              prop = stateParts[0],
+              aifFn = aifYesFn;
+
+          if (prop.indexOf('!') === 0) {
+            prop = prop.substring(1);
+            stateParts[0] = prop;
+            aifFn = aifNoFn;
+          }
+
+          defineProp(node, prop,
+            aifFn.bind(undefined, node, matchNode, stateParts, attrName));
+
+        });
+      }
     });
 
     node._stateBound = true;
   }
 
   return {
-    // TODO, need this on first render??
-    renderState: function() {
-
-    },
-
     renderStateMods: function() {
       var propUpdates = this._statePropUpdates;
       this._statePropUpdates = {};
@@ -127,16 +195,13 @@ console.log('GOT THING: ', matchNode);
       this._state = {};
       this._stateMods = {};
       this._statePropUpdates = {};
-console.log('HERE MAN');
+
       // Node may not be using a template string for its internals, so do the
       // work now if not done before.
       if (!this._stateBound) {
         bindState(this);
       }
     },
-
-    // TODO, what about nested prop changes, like account.name?
-    // TODO, what about arrays of items.
 
     templateInsertedCallback: function() {
       bindState(this);

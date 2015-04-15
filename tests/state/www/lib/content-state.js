@@ -1,1 +1,7 @@
-define(['content-state/main'], function (m) {return m;});
+define(function(require) {
+'use strict';
+
+  return [
+    require('./base')()
+  ];
+});
