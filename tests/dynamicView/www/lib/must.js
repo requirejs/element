@@ -37,9 +37,8 @@ define(function(require, exports, module) {
   }
 
   function toDom(text) {
-    var tmpl = template.makeTemplateNode(text);
-    var frag = tmpl.content.cloneNode(true);
-    return frag;
+    var tmplFn = template.makeTemplateFn(text);
+    return tmplFn();
   }
 
   must = {
