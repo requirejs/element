@@ -5,6 +5,20 @@ define(function () {
     templateInsertedCallback: function () {
       slice.call(this.querySelectorAll('[data-event]'))
       .forEach(function (node) {
+        var parent = node;
+        // Make sure the node is not nested in another component.
+        while ((parent = parent.parentNode)) {
+          if (parent.nodeName.indexOf('-') !== -1) {
+            if (parent !== this) {
+              return;
+            }
+            break;
+          }
+        }
+        if (!parent) {
+          return;
+        }
+
         // Value is of type 'name:value,name:value',
         // with the :value part optional.
         node.dataset.event.split(',').forEach(function (pair) {

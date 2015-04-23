@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+
+var templateDiv = document.createElement('div');
+function makeTemplateFn(text) {
+  return function() {
+    var e,
+        frag = document.createDocumentFragment();
+
+    // For the security conscious: the contents of `text` comes from the
+    // require('template!...') calls that exercises this module's
+    // functionality as a loader plugin to load UI fragments from .html
+    // files via XHR calls to paths the application can reach, or from a \
+    // built resource that was constructed from a similar XHR-type call, but
+    // done at application build time. This means that dynamic calls to
+    // require('template!...') are the source of risk for injection of
+    // hostile HTML.
+    var templateDiv = document.createElement('div');
+    templateDiv.innerHTML = text;
+
+    while ((e = templateDiv.firstChild)) {
+      frag.appendChild(e);
+    }
+    return frag;
+  };
+}
+
+function applyTemplate(text, node) {
+  var tt = makeTemplateFn(text);
+  node.innerHTML = '';
+  var frag = tt();
+
+console.log(node.nodeName + ': ', frag);
+  node.appendChild(frag);
+}
+
+var proto = Object.create(HTMLElement.prototype);
+proto.createdCallback = function () {
+  console.log('TAG-ONE createdCallback');
+  applyTemplate('<h1>tag one</h1><tag-two></tag-two>', this);
+  // this.innerHTML = '<h1>tag one</h1><tag-two></tag-two>';
+};
+
+document.registerElement('tag-one', {
+  prototype: proto
+});
+
+var proto = Object.create(HTMLElement.prototype);
+proto.createdCallback = function () {
+  console.log('TAG-TWO createdCallback');
+  applyTemplate('<b>hello</b>', this);
+  //this.innerHTML = '<b>hello</b>';
+};
+
+document.registerElement('tag-two', {
+  prototype: proto
+});
+
+</script>
+</head>
+<body><tag-one></tag-one></body>
+</html>
