@@ -72,11 +72,11 @@ This loader plugin also avoids eval-related issues with [CSP](https://developer.
 
 ## Element lifecycle background
 
-By default, custom elements registered via `document.registerElement` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#dfn-definition-construction-algorithm):
+By default, custom elements registered via `document.registerElement` can implement standard callbacks for some [lifecycle events](http://w3c.github.io/webcomponents/spec/custom/#types-of-callbacks):
 
 * **createdCallback**: Called when an instance is created.
-* **enteredViewCallback**: Called when the element is inserted into document.
-* **leftViewCallback**: Called when element is removed from the document.
+* **attachedCallback**: Called when the element is inserted into document.
+* **detachedCallback**: Called when element is removed from the document.
 * **attributeChangedCallback**: Called when an attribute on the element is added, changed or removed.
 
 Since these are special callbacks, and multiple mixins may want to listen for them, the `element` loader plugin allows multiple mixins to listen for these events.
