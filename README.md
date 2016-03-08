@@ -66,7 +66,7 @@ Both [Polymer](http://www.polymer-project.org/) and [X-Tags](http://x-tags.org/)
 
 The goal of this modular plugin approach was to provide a small base to provide basic template, ID-to-path conversion, and document.registration management, then encourage support for additional features as separate modules that can be mixed in to an element module's prototype.
 
-This results in each module for a custom element just needing to export the object properties that will be mixed in to the prototype for the element's constructor function. [Example from the tests](https://github.com/jrburke/element/blob/master/tests/basic/www/lib/basic-header/main.js).
+This results in each module for a custom element just needing to export the object properties that will be mixed in to the prototype for the element's constructor function. [Example from the tests](https://github.com/requirejs/element/blob/master/tests/basic/www/lib/basic-header/main.js).
 
 This loader plugin also avoids eval-related issues with [CSP](https://developer.mozilla.org/en-US/docs/Security/CSP/Introducing_Content_Security_Policy) because no eval-based approaches are used.
 
@@ -146,7 +146,7 @@ For example, for this use of a custom element:
 <custom-tag some-attr="foo">
 ```
 
-The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [the `someSuffix` section in basic-header](https://github.com/jrburke/element/blob/master/tests/basic/www/lib/basic-header/main.js). [Usage here](https://github.com/jrburke/element/blob/master/tests/basic/www/index.html).
+The loader plugin will look for a `someAttr` property in the custom element instance, and if it exists, it will call `instance.someAttr = 'foo'`. Getters and Setters can be used, see [the `someSuffix` section in basic-header](https://github.com/requirejs/element/blob/master/tests/basic/www/lib/basic-header/main.js). [Usage here](https://github.com/requirejs/element/blob/master/tests/basic/www/index.html).
 
 Additionally, if an attribute is changed on a custom element instance, the `element` plugin listens for `attributeChangedCallback` and it will automatically trigger this attribute-to-property name conversion and set the value of that property name.
 
@@ -193,7 +193,7 @@ template.ready(function() {
 
 ### hrefid, srcid
 
-Once custom elements are installable via a package manager, knowing the actual paths for items starts to get harder to know. This was simulated in the basic test in this repo, where `www/lib` is where all packages would be installed. In the basic test, [`basic-header`](https://github.com/jrburke/element/tree/master/tests/basic/www/lib/basic-header) was package directory that had a few resources, and the basic-header.html template wanted to refer to an image in that directory. It did so via `srcid`:
+Once custom elements are installable via a package manager, knowing the actual paths for items starts to get harder to know. This was simulated in the basic test in this repo, where `www/lib` is where all packages would be installed. In the basic test, [`basic-header`](https://github.com/requirejs/element/tree/master/tests/basic/www/lib/basic-header) was package directory that had a few resources, and the basic-header.html template wanted to refer to an image in that directory. It did so via `srcid`:
 
 ```html
 <img srcid="./localimage.png">
@@ -221,7 +221,7 @@ If the template specifies `data-prop` as an attribute on a tag, then the element
 
 then after the instance of the element is created, that instance can use `this.dialog` to refer to that element.
 
-Code is at [mixins/data-prop](https://raw.github.com/jrburke/element/master/mixins/data-prop.js).
+Code is at [mixins/data-prop](https://raw.github.com/requirejs/element/master/mixins/data-prop.js).
 
 Example usage:
 
@@ -266,7 +266,7 @@ node.addEventListener('click', this.dialogClick.bind(this));
 node.addEventListener('click', this.dialogMouseOver.bind(this));
 ```
 
-Code is at [mixins/data-event](https://raw.github.com/jrburke/element/master/mixins/data-event.js).
+Code is at [mixins/data-event](https://raw.github.com/requirejs/element/master/mixins/data-event.js).
 
 Example usage:
 
@@ -301,7 +301,7 @@ If the custom element defines a `template` method, then on the first set of the 
 
 If the model is set again later, then if the custom element defines a `modelChangedCallback` method, then it will be called instead of regenerating the template contents.
 
-Code is at [mixins/model](https://raw.github.com/jrburke/element/master/mixins/model.js).
+Code is at [mixins/model](https://raw.github.com/requirejs/element/master/mixins/model.js).
 
 Example usage:
 
@@ -332,8 +332,8 @@ define(function(require) {
 
 They are still under development, so grab them from this repo in raw form:
 
-* [element.js](https://raw.github.com/jrburke/element/master/element.js) or `volo install jrburke/element#element.js`
-* [template.js](https://raw.github.com/jrburke/element/master/template.js) or `volo install jrburke/element#template.js`
+* [element.js](https://raw.github.com/requirejs/element/master/element.js) or `volo install requirejs/element#element.js`
+* [template.js](https://raw.github.com/requirejs/element/master/template.js) or `volo install requirejs/element#template.js`
 
 Or you can use this example project that shows its usage: [jrburke/element-example](https://github.com/jrburke/element-example)
 

@@ -1,8 +1,6 @@
 /**
- * template 0.0.1
- * Copyright (c) 2013-2015, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/element for details
+ * @license template 0.0.1 Copyright jQuery Foundation and other contributors.
+ * Released under MIT license, http://github.com/requirejs/element/LICENSE
  */
 /*jshint browser: true, strict: false */
 /*globals define, requirejs */
