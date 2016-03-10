@@ -384,6 +384,14 @@ require['element!account-view'], function (AccountView) {
 });
 ```
 
+## License
+
+MIT
+
+## Code of Conduct
+
+[jQuery Foundation Code of Conduct](https://jquery.org/conduct/).
+
 ## Notes
 
 ### Cycles
